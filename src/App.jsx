@@ -25,6 +25,7 @@ import {
   isNotificationGranted,
 } from "./services/notificationEngine";
 
+import { startBackgroundWorkerTimer, stopBackgroundWorkerTimer } from "./services/timerWorker";
 import TaskSectionTimer from "./components/TaskSectionTimer";
 import FloatingTaskTimer from "./components/FloatingTaskTimer";
 import FullscreenFocusModal from "./components/FullscreenFocusModal";
