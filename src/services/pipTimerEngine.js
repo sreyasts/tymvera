@@ -2,13 +2,9 @@
  * TYMVERA Picture-in-Picture (PiP) & Floating Focus Timer Engine
  * 
  * Supports:
- * 1. Native Document Picture-in-Picture (Desktop Chromium: Chrome, Edge, Brave, TYMVERA Desktop)
- *    - Genuine OS-level top-level window (WS_EX_TOPMOST) that floats over ALL windows and apps.
- * 2. Canvas Video Picture-in-Picture (Android Chrome/Brave and Mobile Browsers)
- *    - Real OS-level floating PiP overlay window on Android that stays on top of ALL apps.
- *    - Canvas re-draws in real-time on every second tick with background completed progress fill,
- *      task title, percentage badge, and giant countdown.
- *    - Intercepts native play/pause PiP actions to pause/resume routine focus.
+ * 1. Native Document Picture-in-Picture (Always-On-Top OS Window over all PC apps)
+ * 2. System Video Picture-in-Picture (Floating OS Box over all Android & mobile apps)
+ * 3. Real-time synchronised background completed portion progress fill, timer, and controls.
  */
 
 let activePipWindow = null;
@@ -31,18 +27,18 @@ export function formatTimerSeconds(totalSecs) {
 }
 
 /**
- * Draw the high-definition PiP canvas for Android & Video PiP fallback
+ * High-definition Canvas Frame Renderer for Video PiP (Android / Mobile)
  */
 function renderPipCanvasFrame(ctx, { taskName, timeFormatted, isPaused, progressPct }) {
   const w = 480;
   const h = 270;
   const pctClamped = Math.max(0, Math.min(100, Math.round(progressPct || 0)));
 
-  // Base background
-  ctx.fillStyle = '#08080a';
+  // Obsidian Background
+  ctx.fillStyle = '#070709';
   ctx.fillRect(0, 0, w, h);
 
-  // Background Completed Portion Fill
+  // Background Completed Progress Fill
   if (pctClamped > 0) {
     const fillWidth = (pctClamped / 100) * w;
     const grad = ctx.createLinearGradient(0, 0, fillWidth, 0);
@@ -65,7 +61,7 @@ function renderPipCanvasFrame(ctx, { taskName, timeFormatted, isPaused, progress
 
   // Header: Task Name
   ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  ctx.fillStyle = '#9ca3af';
+  ctx.fillStyle = '#8e8e93';
   const title = (taskName || 'TYMVERA ROUTINE').toUpperCase();
   ctx.fillText(title.length > 25 ? title.slice(0, 23) + '...' : title, 26, 42);
 
@@ -76,20 +72,20 @@ function renderPipCanvasFrame(ctx, { taskName, timeFormatted, isPaused, progress
   const pctMetrics = ctx.measureText(pctText);
   ctx.fillText(pctText, w - pctMetrics.width - 26, 42);
 
-  // Giant Countdown Timer
+  // Giant Countdown Timer (Obsidian Monospaced)
   ctx.font = '900 76px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
   ctx.fillStyle = isPaused ? '#f59e0b' : '#ffffff';
   ctx.fillText(timeFormatted || '00:00', 24, 146);
 
   // Progress Bar Track
-  ctx.fillStyle = '#1c1c22';
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
   ctx.fillRect(26, 182, w - 52, 8);
   if (pctClamped > 0) {
     ctx.fillStyle = isPaused ? '#f59e0b' : '#3b82f6';
     ctx.fillRect(26, 182, ((w - 52) * pctClamped) / 100, 8);
   }
 
-  // Footer: Status Badge
+  // Footer: Status Beacon & App
   ctx.fillStyle = isPaused ? '#f59e0b' : '#10b981';
   ctx.beginPath();
   ctx.arc(34, 226, 6, 0, Math.PI * 2);
@@ -97,9 +93,8 @@ function renderPipCanvasFrame(ctx, { taskName, timeFormatted, isPaused, progress
 
   ctx.font = 'bold 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
   ctx.fillStyle = isPaused ? '#f59e0b' : '#10b981';
-  ctx.fillText(isPaused ? 'PAUSED' : 'LIVE ROUTINE FOCUS', 48, 232);
+  ctx.fillText(isPaused ? 'PAUSED' : 'LIVE FOCUS ACTIVE', 48, 232);
 
-  // Footer: Brand
   ctx.font = 'bold 13px ui-monospace, monospace';
   ctx.fillStyle = '#6b7280';
   ctx.fillText('TYMVERA', w - 90, 232);
@@ -122,18 +117,20 @@ export async function launchSystemPipTimer({
 
   currentPipParams = { taskName, timeFormatted, isPaused, progressPct, onTogglePause, onClose };
 
-  // 1. Check if Document Picture-in-Picture window is already active
+  // 1. Focus existing PiP window if open
   if (activePipWindow && !activePipWindow.closed) {
-    activePipWindow.focus();
-    return { mode: 'document', window: activePipWindow };
+    try {
+      activePipWindow.focus();
+      return { mode: 'document', window: activePipWindow };
+    } catch (e) {}
   }
 
-  // 2. Try Native Document Picture-in-Picture (Desktop Windows / Chrome / Edge / Brave)
+  // 2. Try Document Picture-in-Picture (Desktop Windows / Edge / Chrome / Brave)
   if ('documentPictureInPicture' in window && typeof window.documentPictureInPicture.requestWindow === 'function') {
     try {
       const pipWin = await window.documentPictureInPicture.requestWindow({
         width: 340,
-        height: 185,
+        height: 190,
       });
 
       activePipWindow = pipWin;
@@ -145,26 +142,26 @@ export async function launchSystemPipTimer({
         } catch (e) {}
       });
 
-      // Inject standalone high-contrast styles
+      // Inject standalone high-contrast obsidian styles
       const style = pipWin.document.createElement('style');
       style.textContent = `
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background: #08080a; color: #fff; display: flex; flex-direction: column; justify-content: space-between; height: 100vh; padding: 14px; user-select: none; overflow: hidden; position: relative; }
-        .bg-fill { position: absolute; inset: 0; left: 0; z-index: 0; pointer-events: none; transition: width 0.4s ease; }
+        body { background: #070709; color: #fff; display: flex; flex-direction: column; justify-content: space-between; height: 100vh; padding: 14px 16px; user-select: none; overflow: hidden; position: relative; cursor: pointer; }
+        .bg-fill { position: absolute; inset: 0; left: 0; z-index: 0; pointer-events: none; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
         .pip-container { position: relative; z-index: 10; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
-        .pip-header { display: flex; align-items: center; justify-content: space-between; width: 100%; font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
-        .pip-task { color: #fff; font-size: 13px; font-weight: 800; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .pip-timer-row { display: flex; align-items: baseline; justify-content: space-between; margin: 4px 0 2px 0; }
-        .pip-timer { font-size: 38px; font-weight: 900; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; letter-spacing: -1px; color: ${isPaused ? '#FF9F0A' : '#fff'}; }
-        .pip-pct-badge { font-size: 11px; font-family: ui-monospace, monospace; font-weight: 800; color: #3b82f6; }
-        .pip-progress-track { width: 100%; height: 6px; background: #1a1a1a; border-radius: 99px; overflow: hidden; position: relative; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.08); }
-        .pip-progress-fill { height: 100%; background: linear-gradient(90deg, #2563eb, #3b82f6); border-radius: 99px; transition: width 0.4s ease; box-shadow: 0 0 10px rgba(59,130,246,0.6); }
+        .pip-header { display: flex; align-items: center; justify-content: space-between; width: 100%; font-size: 11px; font-weight: 700; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.8px; }
+        .pip-task { color: #ffffff; font-size: 13px; font-weight: 800; max-width: 210px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.2px; }
+        .pip-timer-row { display: flex; align-items: baseline; justify-content: space-between; margin: 6px 0 4px 0; }
+        .pip-timer { font-size: 42px; font-weight: 900; font-family: ui-monospace, SFMono-Regular, "SF Pro", Menlo, Monaco, Consolas, monospace; letter-spacing: -1.5px; color: ${isPaused ? '#FF9F0A' : '#ffffff'}; font-feature-settings: 'tnum'; }
+        .pip-pct-badge { font-size: 12px; font-family: ui-monospace, monospace; font-weight: 800; color: #3b82f6; }
+        .pip-progress-track { width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 99px; overflow: hidden; position: relative; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.06); }
+        .pip-progress-fill { height: 100%; background: linear-gradient(90deg, #2563eb, #3b82f6); border-radius: 99px; transition: width 0.5s ease; box-shadow: 0 0 12px rgba(59,130,246,0.6); }
         .pip-controls { display: flex; gap: 8px; width: 100%; }
-        .pip-btn { flex: 1; padding: 7px 10px; border-radius: 10px; border: none; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; transition: all 0.15s ease; }
-        .pip-btn-primary { background: ${isPaused ? '#3b82f6' : '#F59E0B'}; color: ${isPaused ? '#fff' : '#000'}; }
-        .pip-btn-primary:hover { opacity: 0.9; }
-        .pip-btn-sec { background: #1a1a1a; color: #ccc; border: 1px solid #333; }
-        .pip-btn-sec:hover { background: #262626; color: #fff; }
+        .pip-btn { flex: 1; padding: 8px 12px; border-radius: 12px; border: none; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s ease; }
+        .pip-btn-primary { background: ${isPaused ? '#3b82f6' : 'rgba(255,255,255,0.12)'}; color: #fff; border: 1px solid rgba(255,255,255,0.15); }
+        .pip-btn-primary:hover { background: ${isPaused ? '#2563eb' : 'rgba(255,255,255,0.2)'}; }
+        .pip-btn-sec { background: rgba(255,255,255,0.05); color: #8e8e93; border: 1px solid rgba(255,255,255,0.08); }
+        .pip-btn-sec:hover { background: rgba(255,255,255,0.1); color: #fff; }
       `;
       pipWin.document.head.appendChild(style);
 
@@ -256,14 +253,16 @@ async function openVideoPipStream({ taskName, timeFormatted, isPaused, progressP
       pipVideo.muted = true;
       pipVideo.playsInline = true;
       pipVideo.autoplay = true;
-      pipVideo.srcObject = pipCanvas.captureStream(10);
+      pipVideo.width = 480;
+      pipVideo.height = 270;
       pipVideo.style.position = 'fixed';
-      pipVideo.style.opacity = '0.001';
+      pipVideo.style.top = '-9999px';
+      pipVideo.style.left = '-9999px';
+      pipVideo.style.width = '480px';
+      pipVideo.style.height = '270px';
+      pipVideo.style.opacity = '0.01';
       pipVideo.style.pointerEvents = 'none';
-      pipVideo.style.bottom = '0';
-      pipVideo.style.right = '0';
-      pipVideo.style.width = '1px';
-      pipVideo.style.height = '1px';
+      pipVideo.style.zIndex = '-9999';
       document.body.appendChild(pipVideo);
 
       // Listen to play/pause from OS PiP controls
@@ -277,10 +276,9 @@ async function openVideoPipStream({ taskName, timeFormatted, isPaused, progressP
           currentPipParams.onTogglePause();
         }
       });
-    } else {
-      pipVideo.srcObject = pipCanvas.captureStream(10);
     }
 
+    pipVideo.srcObject = pipCanvas.captureStream(15);
     await pipVideo.play();
 
     if (document.pictureInPictureElement !== pipVideo && pipVideo.requestPictureInPicture) {
@@ -349,8 +347,8 @@ export function updateDocumentPipWindow({
       }
       if (pauseBtn) {
         pauseBtn.textContent = isPaused ? '▶ Resume' : '⏸ Pause';
-        pauseBtn.style.background = isPaused ? '#3b82f6' : '#F59E0B';
-        pauseBtn.style.color = isPaused ? '#fff' : '#000';
+        pauseBtn.style.background = isPaused ? '#3b82f6' : 'rgba(255,255,255,0.12)';
+        pauseBtn.style.color = '#fff';
         pauseBtn.onclick = () => {
           if (typeof onTogglePause === 'function') onTogglePause();
         };
@@ -385,9 +383,6 @@ export function closeDocumentPipWindow() {
   }
 }
 
-/**
- * Backward compatibility alias
- */
 export const openDocumentPipWindow = launchSystemPipTimer;
 export const openVideoPipFallback = openVideoPipStream;
 

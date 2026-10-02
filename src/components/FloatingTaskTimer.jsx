@@ -105,7 +105,7 @@ export default function FloatingTaskTimer({
   const handleTriggerPip = async (e) => {
     if (e) e.stopPropagation();
     try {
-      await openDocumentPipWindow({
+      const res = await openDocumentPipWindow({
         taskName: block?.name,
         timeFormatted: formattedTime,
         isPaused,
@@ -113,11 +113,14 @@ export default function FloatingTaskTimer({
         onTogglePause,
         onClose: () => {},
       });
+      if (res && onDockBack) {
+        onDockBack();
+      }
       if (onInAppToast) {
         onInAppToast({
           id: Date.now(),
           title: "PiP Window Opened",
-          body: `Picture-in-Picture active for "${block?.name}".`,
+          body: `Floating over all apps for "${block?.name}".`,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         });
       }
@@ -137,7 +140,7 @@ export default function FloatingTaskTimer({
       }}
       onPointerDown={handlePointerDown}
       onTouchStart={handlePointerDown}
-      className="z-[9990] rounded-3xl bg-[#090909]/95 text-white border border-blue-500/40 p-3.5 shadow-2xl backdrop-blur-2xl select-none cursor-move animate-in zoom-in-95 duration-150 overflow-hidden ring-1 ring-blue-500/30"
+      className="z-[9990] rounded-3xl bg-[#090909]/95 text-white border border-blue-500/40 p-3.5 shadow-2xl backdrop-blur-2xl select-none cursor-pointer animate-in zoom-in-95 duration-150 overflow-hidden ring-1 ring-blue-500/30"
     >
       {/* ─── BACKGROUND COMPLETED PROGRESS FILL ─── */}
       <div

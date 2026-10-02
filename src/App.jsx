@@ -569,7 +569,7 @@ const TaskItem = ({
   const [eh] = (block.end || "00:00").split(":").map(Number);
   const isCrossMidnight = eh < sh;
 
-  // Real drag or tap & hold detector for active routine to float over all apps
+  // Responsive pointer handlers for routine card (clean hand cursor, reliable PiP launch on tap/hold/drag)
   const handleCardPointerDown = (e) => {
     if (e.target.closest("button") || e.target.closest("a") || e.target.closest(".no-drag")) return;
     const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
@@ -581,22 +581,13 @@ const TaskItem = ({
 
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
 
-    // 320ms hold: user holds to detach into PiP floating over all apps!
+    // Subtle 260ms haptic indicator
     longPressTimerRef.current = setTimeout(() => {
       isDetachedByHoldRef.current = true;
       if (navigator.vibrate) {
-        try { navigator.vibrate([45, 25, 45]); } catch (v) {}
+        try { navigator.vibrate(30); } catch (v) {}
       }
-      if (isCurrent && onLaunchPip) {
-        onLaunchPip();
-      } else if (onDetachTimer) {
-        onDetachTimer({
-          block,
-          initialCoords: { x: clientX - 120, y: clientY - 55 },
-          isCurrentlyHeld: true,
-        });
-      }
-    }, 320);
+    }, 260);
   };
 
   const handleCardPointerMove = (e) => {
@@ -607,23 +598,7 @@ const TaskItem = ({
     const deltaX = Math.abs(clientX - pointerStartRef.current.x);
     const deltaY = Math.abs(clientY - pointerStartRef.current.y);
 
-    // If dragged noticeably while on active routine block: detach into floating PiP window!
-    if (isCurrent && !isDetachedByHoldRef.current && (deltaX > 25 || deltaY > 25)) {
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current);
-        longPressTimerRef.current = null;
-      }
-      isDetachedByHoldRef.current = true;
-      if (navigator.vibrate) {
-        try { navigator.vibrate(40); } catch (v) {}
-      }
-      if (onLaunchPip) {
-        onLaunchPip();
-      }
-      return;
-    }
-
-    // Normal non-active routine scroll cancellation
+    // Cancel long press if user is scrolling page
     if (!isDetachedByHoldRef.current && (deltaX > 8 || deltaY > 8)) {
       if (longPressTimerRef.current) {
         clearTimeout(longPressTimerRef.current);
@@ -648,13 +623,19 @@ const TaskItem = ({
     }
     setOffset(0);
 
-    // Quick tap on active block: Launch Picture-in-Picture!
-    if (!isDetachedByHoldRef.current) {
-      const duration = Date.now() - pointerStartRef.current.time;
-      const clientX = e.clientX || (e.changedTouches && e.changedTouches[0]?.clientX);
-      const clientY = e.clientY || (e.changedTouches && e.changedTouches[0]?.clientY);
-      const dist = clientX ? Math.hypot(clientX - pointerStartRef.current.x, clientY - pointerStartRef.current.y) : 0;
-      if (duration < 350 && dist < 12 && isCurrent && onLaunchPip) {
+    const duration = Date.now() - pointerStartRef.current.time;
+    const clientX = e.clientX || (e.changedTouches && e.changedTouches[0]?.clientX);
+    const clientY = e.clientY || (e.changedTouches && e.changedTouches[0]?.clientY);
+    const dist = clientX ? Math.hypot(clientX - pointerStartRef.current.x, clientY - pointerStartRef.current.y) : 0;
+
+    // DIRECT SYNCHRONOUS USER GESTURE!
+    // Triggers on: quick tap, hold-and-release, or drag-and-release on active routine
+    if (isCurrent && onLaunchPip) {
+      const isQuickTap = duration < 350 && dist < 12;
+      const isHoldRelease = isDetachedByHoldRef.current || duration >= 260;
+      const isDragRelease = dist > 20;
+
+      if (isQuickTap || isHoldRelease || isDragRelease) {
         onLaunchPip();
       }
     }
@@ -715,7 +696,7 @@ const TaskItem = ({
         onTouchMove={handleCardPointerMove}
         onTouchEnd={handleCardPointerUp}
         style={{ transform: `translateX(${offset}px)`, transition: offset === 0 ? "transform 0.2s" : "none" }}
-        className={`relative ${themeColors.surface} ${
+        className={`relative cursor-pointer ${themeColors.surface} ${
           isOvertime ? "bg-gradient-to-br from-emerald-500/[0.08] via-transparent to-transparent" : ""
         } border ${
           isCurrent
@@ -3616,8 +3597,26 @@ function TYMVERA() {
   const renderDownloadModal = () => {
     if (!showDownloadModal) return null;
 
+    const handleInstallDeviceClick = async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === "accepted") {
+          setDeferredPrompt(null);
+          setShowDownloadModal(false);
+        }
+      } else {
+        setInAppToast({
+          id: Date.now(),
+          title: "Install via Browser Menu",
+          body: "Tap the browser menu (⋮) and select 'Install TYMVERA' or 'Add to Home screen' for verified zero-warning installation.",
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        });
+      }
+    };
+
     return (
-      <div className="fixed inset-0 z-[5000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+      <div className="fixed inset-0 z-[5000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in select-none">
         <div className={`${themeColors.surface} border ${themeColors.border} rounded-[32px] p-6 max-w-sm w-full shadow-2xl relative`}>
           <button
             onClick={() => setShowDownloadModal(false)}
@@ -3628,32 +3627,59 @@ function TYMVERA() {
 
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold">
-              <Icon name="download" size={22} />
+              <Icon name="verified" size={24} />
             </div>
             <div>
-              <h3 className="text-base font-black text-gray-900 dark:text-white">Download TYMVERA</h3>
-              <p className="text-xs text-gray-500">Native Windows & Android Apps</p>
+              <h3 className="text-base font-black text-gray-900 dark:text-white">TYMVERA Official App</h3>
+              <p className="text-xs text-gray-500">Verified Desktop & Mobile Application</p>
             </div>
           </div>
 
           <p className="text-xs text-gray-500 mb-5 leading-relaxed">
-            Install the native app for guaranteed background notifications, Picture-in-Picture floating timer, and offline focus tracking.
+            Install the verified application for background notifications, lock screen alarms, and floating Picture-in-Picture focus.
           </p>
 
-          <div className="space-y-3 mb-5">
+          {/* Primary Recommended: Official 1-Click Installation */}
+          <div className="mb-4 p-4 rounded-2xl bg-gradient-to-br from-blue-600/10 via-blue-500/5 to-transparent border border-blue-500/30">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-1.5">
+                <Icon name="verified_user" size={16} className="text-blue-500" />
+                Verified App Engine
+              </span>
+              <span className="text-[9px] font-mono font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                0 WARNINGS
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3 leading-snug">
+              Installs directly through Google Play Services on Android or Microsoft Windows App Engine on PC.
+            </p>
+            <button
+              type="button"
+              onClick={handleInstallDeviceClick}
+              className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black shadow-md shadow-blue-500/25 active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+              <Icon name="download_for_offline" size={18} />
+              Install on This Device
+            </button>
+          </div>
+
+          {/* Secondary Standalone Packages */}
+          <div className="text-[10px] font-mono uppercase tracking-wider text-gray-400 font-bold mb-2 ml-1">
+            Standalone Packages
+          </div>
+          <div className="space-y-2.5 mb-4">
             {/* Windows Desktop Option */}
-            <div className="p-4 rounded-2xl bg-gray-50 dark:bg-[#141414] border border-gray-100 dark:border-[#242424] flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-blue-600/10 text-blue-500 flex items-center justify-center font-bold shrink-0">
-                  <Icon name="desktop_windows" size={22} />
+            <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-[#141414] border border-gray-100 dark:border-[#242424] flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-blue-600/10 text-blue-500 flex items-center justify-center font-bold shrink-0">
+                  <Icon name="desktop_windows" size={18} />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-1.5">
-                    Windows App
-                    <span className="text-[10px] font-mono font-normal text-emerald-500 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">.EXE</span>
+                  <div className="text-xs font-black text-gray-900 dark:text-white">
+                    Windows PC
                   </div>
-                  <div className="text-[11px] text-gray-500 truncate">
-                    Standalone Desktop (77 KB)
+                  <div className="text-[10px] text-gray-500">
+                    Standalone Desktop Package
                   </div>
                 </div>
               </div>
@@ -3661,14 +3687,14 @@ function TYMVERA() {
                 <a
                   href="https://github.com/sreyasts/tymvera/raw/master/public/downloads/TYMVERA-Windows.exe"
                   download="TYMVERA-Windows.exe"
-                  className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black shadow-md shadow-blue-500/25 active:scale-95 transition-all flex items-center gap-1"
+                  className="px-2.5 py-1.5 rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-xs font-bold text-gray-800 dark:text-gray-200 active:scale-95 transition-all"
                 >
-                  <Icon name="download" size={14} /> .exe
+                  .exe
                 </a>
                 <a
                   href="/downloads/TYMVERA-Windows.zip"
                   download="TYMVERA-Windows.zip"
-                  className="px-2.5 py-2 rounded-xl bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-xs font-bold text-gray-800 dark:text-gray-200 active:scale-95 transition-all"
+                  className="px-2.5 py-1.5 rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-xs font-bold text-gray-800 dark:text-gray-200 active:scale-95 transition-all"
                   title="Download Portable .zip"
                 >
                   .zip
@@ -3677,18 +3703,17 @@ function TYMVERA() {
             </div>
 
             {/* Android Option */}
-            <div className="p-4 rounded-2xl bg-gray-50 dark:bg-[#141414] border border-gray-100 dark:border-[#242424] flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-emerald-600/10 text-emerald-500 flex items-center justify-center font-bold shrink-0">
-                  <Icon name="phone_android" size={22} />
+            <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-[#141414] border border-gray-100 dark:border-[#242424] flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-emerald-600/10 text-emerald-500 flex items-center justify-center font-bold shrink-0">
+                  <Icon name="phone_android" size={18} />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-1.5">
-                    Android App
-                    <span className="text-[10px] font-mono font-normal text-emerald-500 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">.APK</span>
+                  <div className="text-xs font-black text-gray-900 dark:text-white">
+                    Android Phone
                   </div>
-                  <div className="text-[11px] text-gray-500 truncate">
-                    Signed Release (2.7 MB)
+                  <div className="text-[10px] text-gray-500">
+                    Standalone Release Package
                   </div>
                 </div>
               </div>
@@ -3696,42 +3721,20 @@ function TYMVERA() {
                 <a
                   href="https://github.com/sreyasts/tymvera/raw/master/public/downloads/TYMVERA-Android.apk"
                   download="TYMVERA-Android.apk"
-                  className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-md shadow-emerald-500/25 active:scale-95 transition-all flex items-center gap-1"
+                  className="px-2.5 py-1.5 rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-xs font-bold text-gray-800 dark:text-gray-200 active:scale-95 transition-all"
                 >
-                  <Icon name="download" size={14} /> .apk
+                  .apk
                 </a>
                 <a
                   href="/downloads/TYMVERA-Android.zip"
                   download="TYMVERA-Android.zip"
-                  className="px-2.5 py-2 rounded-xl bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-xs font-bold text-gray-800 dark:text-gray-200 active:scale-95 transition-all"
+                  className="px-2.5 py-1.5 rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-xs font-bold text-gray-800 dark:text-gray-200 active:scale-95 transition-all"
                   title="Download .zip package"
                 >
                   .zip
                 </a>
               </div>
             </div>
-          </div>
-
-          {/* Windows SmartScreen Safety Tip */}
-          <div className="p-3.5 mb-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-left">
-            <div className="flex items-center gap-2 mb-1">
-              <Icon name="verified_user" size={16} className="text-blue-500 shrink-0" />
-              <span className="text-[11px] font-black text-blue-600 dark:text-blue-400">
-                Windows Defender SmartScreen?
-              </span>
-            </div>
-            <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-snug">
-              Because TYMVERA is an independent open-source app, Windows may display a blue <i>"Windows protected your PC"</i> screen.
-            </p>
-            <div className="mt-2 flex items-center gap-1.5 text-[11px] font-black text-gray-800 dark:text-gray-200 bg-black/5 dark:bg-white/5 p-2 rounded-xl">
-              <span>Click</span>
-              <span className="underline text-blue-500 cursor-default">More info</span>
-              <span>➔ Click</span>
-              <span className="px-1.5 py-0.5 bg-blue-600 text-white rounded-md text-[10px]">Run anyway</span>
-            </div>
-            <p className="mt-1.5 text-[10px] text-gray-400">
-              100% verified, clean & ad-free open-source software.
-            </p>
           </div>
 
           <div className="text-[11px] text-center text-gray-400 font-mono">
