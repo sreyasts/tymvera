@@ -26,7 +26,11 @@ import {
 } from "./services/notificationEngine";
 
 import { startBackgroundWorkerTimer } from "./services/timerWorker";
-import FocusTimerSection from "./components/FocusTimerSection";
+import LiquidBottleGauge from "./components/LiquidBottleGauge";
+import TaskBottleTimer from "./components/TaskBottleTimer";
+import FloatingBottleTimer from "./components/FloatingBottleTimer";
+import FullscreenBottleModal from "./components/FullscreenBottleModal";
+import { openDocumentPipWindow, updateDocumentPipWindow, formatTimerSeconds } from "./services/pipTimerEngine";
 
 import {
   signInWithGoogle,
@@ -536,6 +540,17 @@ const TaskItem = ({
   onDeleteFromToday,
   onDeletePreset,
   onDuplicate,
+  isTimerActive,
+  isTimerPaused,
+  remainingSeconds,
+  totalSeconds,
+  isDetached,
+  onTogglePause,
+  onDetachTimer,
+  onDockBack,
+  onOpenFullscreen,
+  onStartFocusTimer,
+  onInAppToast,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [offset, setOffset] = useState(0);
@@ -693,6 +708,20 @@ const TaskItem = ({
                 {isCurrent && (
                   <span className="text-blue-500 font-bold ml-1 animate-pulse">● In Progress</span>
                 )}
+                {!isTimerActive && onStartFocusTimer && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onStartFocusTimer(block);
+                    }}
+                    className="ml-1 px-2 py-0.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 text-[10px] font-bold flex items-center gap-1 transition-colors active:scale-95"
+                    title="Activate bottle timer for this routine"
+                  >
+                    <Icon name="hourglass_top" size={12} />
+                    <span>Focus</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -753,6 +782,38 @@ const TaskItem = ({
             )}
           </div>
         </div>
+
+        {/* ─── IN-SECTION LIQUID BOTTLE TIMER (DECREASING LIKE BATTERY %) ─── */}
+        {isTimerActive && !isDetached && (
+          <TaskBottleTimer
+            block={block}
+            isCurrent={isCurrent}
+            isPaused={isTimerPaused}
+            remainingSeconds={remainingSeconds}
+            totalSeconds={totalSeconds}
+            onTogglePause={onTogglePause}
+            onDetach={onDetachTimer}
+            onOpenFullscreen={onOpenFullscreen}
+            onInAppToast={onInAppToast}
+            themeColors={themeColors}
+          />
+        )}
+
+        {isTimerActive && isDetached && (
+          <div className="my-2.5 p-3 rounded-2xl bg-blue-500/10 border border-dashed border-blue-500/30 flex items-center justify-between text-xs text-blue-500 font-mono">
+            <span className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+              <span>Timer detached & floating</span>
+            </span>
+            <button
+              type="button"
+              onClick={onDockBack}
+              className="text-[10px] uppercase font-black px-2.5 py-1 rounded-xl bg-blue-500 text-white hover:bg-blue-600 transition-colors shadow-sm"
+            >
+              Dock Back
+            </button>
+          </div>
+        )}
 
         {/* Partial & Overtime Visual Progress Bar */}
         {status === "partial" && (
@@ -879,6 +940,13 @@ function TYMVERA() {
   // Storage Inspector State
   const [showStorageInspector, setShowStorageInspector] = useState(false);
   const [storageReport, setStorageReport] = useState(null);
+
+  // ─── IN-SECTION & FLOATING BOTTLE TIMER STATE ──────────────────────────────
+  const [selectedFocusBlockId, setSelectedFocusBlockId] = useState(null);
+  const [isTimerPaused, setIsTimerPaused] = useState(false);
+  const [pausedSeconds, setPausedSeconds] = useState(null);
+  const [detachedTimer, setDetachedTimer] = useState(null); // { block, coords }
+  const [fullscreenTimerBlock, setFullscreenTimerBlock] = useState(null);
 
   // Boot safety refs (prevent empty-state overwrite of existing data)
   const hasCompletedInitialLoadRef = useRef(false);
@@ -1618,6 +1686,71 @@ function TYMVERA() {
         return nowStr >= b.start && nowStr < b.end;
       })
     : null;
+
+  // ─── IN-SECTION & FLOATING BOTTLE TIMER COMPUTATIONS ──────────────────────
+  const focusBlock = useMemo(() => {
+    if (selectedFocusBlockId) {
+      const found = selBlocks.find((b) => b && b.id === selectedFocusBlockId);
+      if (found) return found;
+    }
+    return activeBl;
+  }, [selectedFocusBlockId, selBlocks, activeBl]);
+
+  const focusBlockTotalSeconds = useMemo(() => {
+    if (!focusBlock || !focusBlock.start || !focusBlock.end) return 3600;
+    const [sh, sm] = focusBlock.start.split(":").map(Number);
+    const [eh, em] = focusBlock.end.split(":").map(Number);
+    let durMins = (eh * 60 + (em || 0)) - (sh * 60 + (sm || 0));
+    if (durMins <= 0) durMins += 24 * 60;
+    return durMins * 60;
+  }, [focusBlock]);
+
+  const focusBlockRemainingSeconds = useMemo(() => {
+    if (!focusBlock || !focusBlock.start || !focusBlock.end) return 0;
+    if (isTimerPaused && pausedSeconds !== null) return pausedSeconds;
+
+    const [sh, sm] = focusBlock.start.split(":").map(Number);
+    const [eh, em] = focusBlock.end.split(":").map(Number);
+    let startSecs = sh * 3600 + (sm || 0) * 60;
+    let endSecs = eh * 3600 + (em || 0) * 60;
+    if (endSecs <= startSecs) endSecs += 24 * 3600;
+
+    let nowSecs = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+    if (nowSecs < startSecs && endSecs > 24 * 3600) nowSecs += 24 * 3600;
+
+    const rem = Math.max(0, endSecs - nowSecs);
+    return rem;
+  }, [focusBlock, isTimerPaused, pausedSeconds, now]);
+
+  const toggleFocusTimerPause = useCallback(() => {
+    setIsTimerPaused((prev) => {
+      const next = !prev;
+      if (next) {
+        setPausedSeconds(focusBlockRemainingSeconds);
+        playNotificationChime(0.5);
+      } else {
+        setPausedSeconds(null);
+        playNotificationChime(0.8);
+      }
+      return next;
+    });
+  }, [focusBlockRemainingSeconds]);
+
+  // Keep native Document PiP window synchronized if open
+  useEffect(() => {
+    if (focusBlock) {
+      const pct = focusBlockTotalSeconds > 0
+        ? (focusBlockRemainingSeconds / focusBlockTotalSeconds) * 100
+        : 0;
+      updateDocumentPipWindow({
+        taskName: focusBlock.name,
+        timeFormatted: formatTimerSeconds(focusBlockRemainingSeconds),
+        isPaused: isTimerPaused,
+        progressPct: pct,
+        onTogglePause: toggleFocusTimerPause,
+      });
+    }
+  }, [focusBlock, focusBlockRemainingSeconds, focusBlockTotalSeconds, isTimerPaused, toggleFocusTimerPause]);
 
   const streak = useMemo(() => {
     try {
@@ -3766,15 +3899,6 @@ function TYMVERA() {
           </div>
         </div>
 
-        {/* Live Focus Session & Picture-in-Picture Timer */}
-        <FocusTimerSection
-          activeBlock={activeBl}
-          allBlocks={selBlocks}
-          themeColors={themeColors}
-          isDark={isDark}
-          onInAppToast={setInAppToast}
-        />
-
         {/* Timeline Tasks List */}
         <div className="px-4">
           <div className="flex justify-between items-center mb-3 ml-2">
@@ -3804,6 +3928,8 @@ function TYMVERA() {
               const prog = selProg[block.id];
               const status = prog?.status || "pending";
               const isCurrent = isToday && activeBl && activeBl.id === block.id;
+              const isFocusActive = isToday && focusBlock && focusBlock.id === block.id;
+              const isDetached = detachedTimer && detachedTimer.block && detachedTimer.block.id === block.id;
 
               return (
                 <TaskItem
@@ -3822,6 +3948,17 @@ function TYMVERA() {
                   onDeleteFromToday={removeTaskFromToday}
                   onDeletePreset={deletePreset}
                   onDuplicate={handleDuplicateRoutine}
+                  isTimerActive={isFocusActive}
+                  isTimerPaused={isTimerPaused}
+                  remainingSeconds={focusBlockRemainingSeconds}
+                  totalSeconds={focusBlockTotalSeconds}
+                  isDetached={isDetached}
+                  onTogglePause={toggleFocusTimerPause}
+                  onDetachTimer={({ block: b, initialCoords }) => setDetachedTimer({ block: b, coords: initialCoords })}
+                  onDockBack={() => setDetachedTimer(null)}
+                  onOpenFullscreen={() => setFullscreenTimerBlock(block)}
+                  onStartFocusTimer={(b) => setSelectedFocusBlockId(b.id)}
+                  onInAppToast={setInAppToast}
                 />
               );
             })
@@ -5206,6 +5343,32 @@ function TYMVERA() {
           )}
 
           {/* Overlays & Modals */}
+          {detachedTimer && (
+            <FloatingBottleTimer
+              block={detachedTimer.block}
+              isPaused={isTimerPaused}
+              remainingSeconds={focusBlockRemainingSeconds}
+              totalSeconds={focusBlockTotalSeconds}
+              initialPosition={detachedTimer.coords}
+              onTogglePause={toggleFocusTimerPause}
+              onDockBack={() => setDetachedTimer(null)}
+              onOpenFullscreen={() => setFullscreenTimerBlock(detachedTimer.block)}
+              onInAppToast={setInAppToast}
+            />
+          )}
+
+          {fullscreenTimerBlock && (
+            <FullscreenBottleModal
+              block={fullscreenTimerBlock}
+              isPaused={isTimerPaused}
+              remainingSeconds={focusBlockRemainingSeconds}
+              totalSeconds={focusBlockTotalSeconds}
+              onTogglePause={toggleFocusTimerPause}
+              onClose={() => setFullscreenTimerBlock(null)}
+              onInAppToast={setInAppToast}
+            />
+          )}
+
           {renderInAppToast()}
           {renderAlarmModal()}
           {renderPermissionModal()}
