@@ -25,11 +25,10 @@ import {
   isNotificationGranted,
 } from "./services/notificationEngine";
 
-import { startBackgroundWorkerTimer } from "./services/timerWorker";
 import TaskSectionTimer from "./components/TaskSectionTimer";
 import FloatingTaskTimer from "./components/FloatingTaskTimer";
 import FullscreenFocusModal from "./components/FullscreenFocusModal";
-import { openDocumentPipWindow, updateDocumentPipWindow, formatTimerSeconds } from "./services/pipTimerEngine";
+import { launchSystemPipTimer, openDocumentPipWindow, updateDocumentPipWindow, formatTimerSeconds } from "./services/pipTimerEngine";
 
 import {
   signInWithGoogle,
@@ -569,7 +568,7 @@ const TaskItem = ({
   const [eh] = (block.end || "00:00").split(":").map(Number);
   const isCrossMidnight = eh < sh;
 
-  // Real tap & hold (400ms without scrolling) detector
+  // Real drag or tap & hold detector for active routine to float over all apps
   const handleCardPointerDown = (e) => {
     if (e.target.closest("button") || e.target.closest("a") || e.target.closest(".no-drag")) return;
     const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
@@ -581,20 +580,22 @@ const TaskItem = ({
 
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
 
-    // 400ms hold: user must really hold without moving to trigger detachment
+    // 320ms hold: user holds to detach into PiP floating over all apps!
     longPressTimerRef.current = setTimeout(() => {
       isDetachedByHoldRef.current = true;
       if (navigator.vibrate) {
         try { navigator.vibrate([45, 25, 45]); } catch (v) {}
       }
-      if (onDetachTimer) {
+      if (isCurrent && onLaunchPip) {
+        onLaunchPip();
+      } else if (onDetachTimer) {
         onDetachTimer({
           block,
           initialCoords: { x: clientX - 120, y: clientY - 55 },
           isCurrentlyHeld: true,
         });
       }
-    }, 400);
+    }, 320);
   };
 
   const handleCardPointerMove = (e) => {
@@ -605,7 +606,23 @@ const TaskItem = ({
     const deltaX = Math.abs(clientX - pointerStartRef.current.x);
     const deltaY = Math.abs(clientY - pointerStartRef.current.y);
 
-    // If moved > 8px before timer fired: it is a SCROLL! Cancel the long press!
+    // If dragged noticeably while on active routine block: detach into floating PiP window!
+    if (isCurrent && !isDetachedByHoldRef.current && (deltaX > 25 || deltaY > 25)) {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+      isDetachedByHoldRef.current = true;
+      if (navigator.vibrate) {
+        try { navigator.vibrate(40); } catch (v) {}
+      }
+      if (onLaunchPip) {
+        onLaunchPip();
+      }
+      return;
+    }
+
+    // Normal non-active routine scroll cancellation
     if (!isDetachedByHoldRef.current && (deltaX > 8 || deltaY > 8)) {
       if (longPressTimerRef.current) {
         clearTimeout(longPressTimerRef.current);
@@ -630,13 +647,13 @@ const TaskItem = ({
     }
     setOffset(0);
 
-    // Quick tap on active block without dragging: Launch Picture-in-Picture!
+    // Quick tap on active block: Launch Picture-in-Picture!
     if (!isDetachedByHoldRef.current) {
       const duration = Date.now() - pointerStartRef.current.time;
       const clientX = e.clientX || (e.changedTouches && e.changedTouches[0]?.clientX);
       const clientY = e.clientY || (e.changedTouches && e.changedTouches[0]?.clientY);
       const dist = clientX ? Math.hypot(clientX - pointerStartRef.current.x, clientY - pointerStartRef.current.y) : 0;
-      if (duration < 350 && dist < 10 && isCurrent && onLaunchPip) {
+      if (duration < 350 && dist < 12 && isCurrent && onLaunchPip) {
         onLaunchPip();
       }
     }
@@ -1816,7 +1833,7 @@ function TYMVERA() {
       ? ((focusBlockTotalSeconds - focusBlockRemainingSeconds) / focusBlockTotalSeconds) * 100
       : 0;
 
-    const pipWin = await openDocumentPipWindow({
+    const pipResult = await launchSystemPipTimer({
       taskName: b.name,
       timeFormatted: formattedTime,
       isPaused: isTimerPaused,
@@ -1825,8 +1842,19 @@ function TYMVERA() {
       onClose: () => {},
     });
 
-    if (!pipWin) {
-      // Fallback: detach to floating widget inside the app
+    if (pipResult) {
+      setDetachedTimer(null);
+      try {
+        window.blur();
+      } catch (e) {}
+      setInAppToast({
+        id: Date.now(),
+        title: pipResult.mode === 'document' ? "Floating Over All Windows" : "Picture-in-Picture Active",
+        body: `Timer for "${b.name}" is now floating above all apps and windows!`,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      });
+    } else {
+      // In-app fallback only if browser completely lacks PiP support
       setDetachedTimer({
         block: b,
         coords: { x: window.innerWidth - 260, y: window.innerHeight - 150 },
@@ -1836,13 +1864,6 @@ function TYMVERA() {
         id: Date.now(),
         title: "Floating Timer Active",
         body: `Timer for "${b.name}" is floating. Drag it anywhere!`,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      });
-    } else {
-      setInAppToast({
-        id: Date.now(),
-        title: "Picture-in-Picture Active",
-        body: `Floating window opened for "${b.name}".`,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       });
     }
