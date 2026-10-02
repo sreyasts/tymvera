@@ -3690,6 +3690,28 @@ function TYMVERA() {
             </div>
           </div>
 
+          {/* Windows SmartScreen Safety Tip */}
+          <div className="p-3.5 mb-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-left">
+            <div className="flex items-center gap-2 mb-1">
+              <Icon name="verified_user" size={16} className="text-blue-500 shrink-0" />
+              <span className="text-[11px] font-black text-blue-600 dark:text-blue-400">
+                Windows Defender SmartScreen?
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-snug">
+              Because TYMVERA is an independent open-source app, Windows may display a blue <i>"Windows protected your PC"</i> screen.
+            </p>
+            <div className="mt-2 flex items-center gap-1.5 text-[11px] font-black text-gray-800 dark:text-gray-200 bg-black/5 dark:bg-white/5 p-2 rounded-xl">
+              <span>Click</span>
+              <span className="underline text-blue-500 cursor-default">More info</span>
+              <span>➔ Click</span>
+              <span className="px-1.5 py-0.5 bg-blue-600 text-white rounded-md text-[10px]">Run anyway</span>
+            </div>
+            <p className="mt-1.5 text-[10px] text-gray-400">
+              100% verified, clean & ad-free open-source software.
+            </p>
+          </div>
+
           <div className="text-[11px] text-center text-gray-400 font-mono">
             Direct downloads hosted on GitHub & Firebase CDN
           </div>

@@ -2,9 +2,18 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
+
+[assembly: AssemblyTitle("TYMVERA Focus Routine OS")]
+[assembly: AssemblyDescription("TYMVERA Standalone Desktop Application with Background Notifications and PiP Timer")]
+[assembly: AssemblyCompany("TYMVERA")]
+[assembly: AssemblyProduct("TYMVERA")]
+[assembly: AssemblyCopyright("Copyright © 2026 TYMVERA")]
+[assembly: AssemblyVersion("2.0.0.0")]
+[assembly: AssemblyFileVersion("2.0.0.0")]
 
 namespace TYMVERA.Desktop
 {
@@ -60,6 +69,9 @@ namespace TYMVERA.Desktop
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Microsoft\Edge\Application\msedge.exe"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Microsoft\Edge\Application\msedge.exe"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Microsoft\Edge\Application\msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"BraveSoftware\Brave-Browser\Application\brave.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"BraveSoftware\Brave-Browser\Application\brave.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"BraveSoftware\Brave-Browser\Application\brave.exe"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Google\Chrome\Application\chrome.exe"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Google\Chrome\Application\chrome.exe"),
             };
@@ -166,6 +178,22 @@ namespace TYMVERA.Desktop
                         writer.WriteLine("URL=" + AppUrl);
                         writer.WriteLine("IconFile=" + Application.ExecutablePath);
                         writer.WriteLine("IconIndex=0");
+                    }
+                }
+
+                string startMenuPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs");
+                if (Directory.Exists(startMenuPath))
+                {
+                    string startShortcut = Path.Combine(startMenuPath, "TYMVERA.url");
+                    if (!File.Exists(startShortcut))
+                    {
+                        using (StreamWriter writer = new StreamWriter(startShortcut))
+                        {
+                            writer.WriteLine("[InternetShortcut]");
+                            writer.WriteLine("URL=" + AppUrl);
+                            writer.WriteLine("IconFile=" + Application.ExecutablePath);
+                            writer.WriteLine("IconIndex=0");
+                        }
                     }
                 }
             }
