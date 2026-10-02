@@ -26,10 +26,9 @@ import {
 } from "./services/notificationEngine";
 
 import { startBackgroundWorkerTimer } from "./services/timerWorker";
-import LiquidBottleGauge from "./components/LiquidBottleGauge";
-import TaskBottleTimer from "./components/TaskBottleTimer";
-import FloatingBottleTimer from "./components/FloatingBottleTimer";
-import FullscreenBottleModal from "./components/FullscreenBottleModal";
+import TaskSectionTimer from "./components/TaskSectionTimer";
+import FloatingTaskTimer from "./components/FloatingTaskTimer";
+import FullscreenFocusModal from "./components/FullscreenFocusModal";
 import { openDocumentPipWindow, updateDocumentPipWindow, formatTimerSeconds } from "./services/pipTimerEngine";
 
 import {
@@ -550,12 +549,16 @@ const TaskItem = ({
   onDockBack,
   onOpenFullscreen,
   onStartFocusTimer,
+  onLaunchPip,
   onInAppToast,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [offset, setOffset] = useState(0);
-  const touchStartX = useRef(0);
-  const isSwiping = useRef(false);
+
+  // Long-press (tap and hold) refs
+  const longPressTimerRef = useRef(null);
+  const pointerStartRef = useRef({ x: 0, y: 0, time: 0 });
+  const isDetachedByHoldRef = useRef(false);
 
   const duration = mins(block.start, block.end);
   const actualMins = prog?.actualMins || 0;
@@ -566,24 +569,79 @@ const TaskItem = ({
   const [eh] = (block.end || "00:00").split(":").map(Number);
   const isCrossMidnight = eh < sh;
 
-  const handleTouchStart = (e) => {
-    touchStartX.current = e.touches[0].clientX;
-    isSwiping.current = true;
+  // Real tap & hold (400ms without scrolling) detector
+  const handleCardPointerDown = (e) => {
+    if (e.target.closest("button") || e.target.closest("a") || e.target.closest(".no-drag")) return;
+    const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0]?.clientY);
+    if (typeof clientX !== "number" || typeof clientY !== "number") return;
+
+    pointerStartRef.current = { x: clientX, y: clientY, time: Date.now() };
+    isDetachedByHoldRef.current = false;
+
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+
+    // 400ms hold: user must really hold without moving to trigger detachment
+    longPressTimerRef.current = setTimeout(() => {
+      isDetachedByHoldRef.current = true;
+      if (navigator.vibrate) {
+        try { navigator.vibrate([45, 25, 45]); } catch (v) {}
+      }
+      if (onDetachTimer) {
+        onDetachTimer({
+          block,
+          initialCoords: { x: clientX - 120, y: clientY - 55 },
+          isCurrentlyHeld: true,
+        });
+      }
+    }, 400);
   };
 
-  const handleTouchMove = (e) => {
-    if (!isSwiping.current) return;
-    const diff = e.touches[0].clientX - touchStartX.current;
-    if (diff > 0 && diff < 90) setOffset(diff);
+  const handleCardPointerMove = (e) => {
+    const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0]?.clientY);
+    if (typeof clientX !== "number" || typeof clientY !== "number") return;
+
+    const deltaX = Math.abs(clientX - pointerStartRef.current.x);
+    const deltaY = Math.abs(clientY - pointerStartRef.current.y);
+
+    // If moved > 8px before timer fired: it is a SCROLL! Cancel the long press!
+    if (!isDetachedByHoldRef.current && (deltaX > 8 || deltaY > 8)) {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+      // Horizontal swipe to complete routine
+      if (deltaX > deltaY && clientX > pointerStartRef.current.x && deltaX < 90) {
+        setOffset(clientX - pointerStartRef.current.x);
+      }
+    }
   };
 
-  const handleTouchEnd = () => {
+  const handleCardPointerUp = (e) => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+
     if (offset > 45) {
       if (status !== "completed") onMark(block.id, "completed");
       else onUnmark(block.id);
     }
     setOffset(0);
-    isSwiping.current = false;
+
+    // Quick tap on active block without dragging: Launch Picture-in-Picture!
+    if (!isDetachedByHoldRef.current) {
+      const duration = Date.now() - pointerStartRef.current.time;
+      const clientX = e.clientX || (e.changedTouches && e.changedTouches[0]?.clientX);
+      const clientY = e.clientY || (e.changedTouches && e.changedTouches[0]?.clientY);
+      const dist = clientX ? Math.hypot(clientX - pointerStartRef.current.x, clientY - pointerStartRef.current.y) : 0;
+      if (duration < 350 && dist < 10 && isCurrent && onLaunchPip) {
+        onLaunchPip();
+      }
+    }
+
+    isDetachedByHoldRef.current = false;
   };
 
   let badgeBorder = "border-transparent";
@@ -632,9 +690,12 @@ const TaskItem = ({
       </div>
 
       <div
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        onPointerDown={handleCardPointerDown}
+        onPointerMove={handleCardPointerMove}
+        onPointerUp={handleCardPointerUp}
+        onTouchStart={handleCardPointerDown}
+        onTouchMove={handleCardPointerMove}
+        onTouchEnd={handleCardPointerUp}
         style={{ transform: `translateX(${offset}px)`, transition: offset === 0 ? "transform 0.2s" : "none" }}
         className={`relative ${themeColors.surface} ${
           isOvertime ? "bg-gradient-to-br from-emerald-500/[0.08] via-transparent to-transparent" : ""
@@ -646,17 +707,24 @@ const TaskItem = ({
             : themeColors.border
         } rounded-3xl p-5 overflow-hidden transition-all`}
       >
-        {/* Active live progress bar at top */}
+        {/* ─── BACKGROUND COMPLETED PROGRESS FILL ─── */}
+        {/* Progressively covers the block with the completed portion from a small line to the full box */}
         {isCurrent && (
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gray-100 dark:bg-[#222] overflow-hidden">
-            <div
-              className="h-full bg-blue-500 transition-all duration-1000"
-              style={{ width: `${currentProgress}%` }}
-            />
+          <div
+            className="absolute inset-y-0 left-0 pointer-events-none transition-all duration-1000 ease-linear z-0"
+            style={{
+              width: `${Math.max(1, Math.min(100, currentProgress))}%`,
+              background: isDark
+                ? "linear-gradient(90deg, rgba(37, 99, 235, 0.18) 0%, rgba(59, 130, 246, 0.32) 98%, rgba(96, 165, 250, 0.85) 100%)"
+                : "linear-gradient(90deg, rgba(37, 99, 235, 0.12) 0%, rgba(59, 130, 246, 0.22) 98%, rgba(37, 99, 235, 0.7) 100%)",
+            }}
+          >
+            {/* The leading edge line, initially a small line at 0-1%, filling across the box */}
+            <div className="absolute top-0 bottom-0 right-0 w-[2.5px] bg-blue-500 shadow-[0_0_12px_#3b82f6]" />
           </div>
         )}
 
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-start relative z-10">
           <div className="flex items-center gap-3.5 flex-1 min-w-0">
             <div
               className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${
@@ -716,9 +784,9 @@ const TaskItem = ({
                       onStartFocusTimer(block);
                     }}
                     className="ml-1 px-2 py-0.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 text-[10px] font-bold flex items-center gap-1 transition-colors active:scale-95"
-                    title="Activate bottle timer for this routine"
+                    title="Activate timer for this routine"
                   >
-                    <Icon name="hourglass_top" size={12} />
+                    <Icon name="timer" size={12} />
                     <span>Focus</span>
                   </button>
                 )}
@@ -783,24 +851,28 @@ const TaskItem = ({
           </div>
         </div>
 
-        {/* ─── IN-SECTION LIQUID BOTTLE TIMER (DECREASING LIKE BATTERY %) ─── */}
+        {/* ─── IN-SECTION ROUTINE TIMER (NO BOTTLE) ─── */}
         {isTimerActive && !isDetached && (
-          <TaskBottleTimer
-            block={block}
-            isCurrent={isCurrent}
-            isPaused={isTimerPaused}
-            remainingSeconds={remainingSeconds}
-            totalSeconds={totalSeconds}
-            onTogglePause={onTogglePause}
-            onDetach={onDetachTimer}
-            onOpenFullscreen={onOpenFullscreen}
-            onInAppToast={onInAppToast}
-            themeColors={themeColors}
-          />
+          <div className="relative z-10">
+            <TaskSectionTimer
+              block={block}
+              isCurrent={isCurrent}
+              isPaused={isTimerPaused}
+              remainingSeconds={remainingSeconds}
+              totalSeconds={totalSeconds}
+              completedPct={currentProgress}
+              onTogglePause={onTogglePause}
+              onOpenFullscreen={onOpenFullscreen}
+              onInAppToast={onInAppToast}
+              onLaunchPip={onLaunchPip}
+              isDark={isDark}
+              themeColors={themeColors}
+            />
+          </div>
         )}
 
         {isTimerActive && isDetached && (
-          <div className="my-2.5 p-3 rounded-2xl bg-blue-500/10 border border-dashed border-blue-500/30 flex items-center justify-between text-xs text-blue-500 font-mono">
+          <div className="my-2.5 p-3 rounded-2xl bg-blue-500/10 border border-dashed border-blue-500/30 flex items-center justify-between text-xs text-blue-500 font-mono relative z-10">
             <span className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
               <span>Timer detached & floating</span>
@@ -1736,11 +1808,51 @@ function TYMVERA() {
     });
   }, [focusBlockRemainingSeconds]);
 
+  const handleOpenPip = useCallback(async (targetBlock) => {
+    const b = targetBlock || focusBlock;
+    if (!b) return;
+    const formattedTime = formatTimerSeconds(focusBlockRemainingSeconds);
+    const completedPct = focusBlockTotalSeconds > 0
+      ? ((focusBlockTotalSeconds - focusBlockRemainingSeconds) / focusBlockTotalSeconds) * 100
+      : 0;
+
+    const pipWin = await openDocumentPipWindow({
+      taskName: b.name,
+      timeFormatted: formattedTime,
+      isPaused: isTimerPaused,
+      progressPct: completedPct,
+      onTogglePause: toggleFocusTimerPause,
+      onClose: () => {},
+    });
+
+    if (!pipWin) {
+      // Fallback: detach to floating widget inside the app
+      setDetachedTimer({
+        block: b,
+        coords: { x: window.innerWidth - 260, y: window.innerHeight - 150 },
+        isCurrentlyHeld: false,
+      });
+      setInAppToast({
+        id: Date.now(),
+        title: "Floating Timer Active",
+        body: `Timer for "${b.name}" is floating. Drag it anywhere!`,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      });
+    } else {
+      setInAppToast({
+        id: Date.now(),
+        title: "Picture-in-Picture Active",
+        body: `Floating window opened for "${b.name}".`,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      });
+    }
+  }, [focusBlock, focusBlockRemainingSeconds, focusBlockTotalSeconds, isTimerPaused, toggleFocusTimerPause]);
+
   // Keep native Document PiP window synchronized if open
   useEffect(() => {
     if (focusBlock) {
       const pct = focusBlockTotalSeconds > 0
-        ? (focusBlockRemainingSeconds / focusBlockTotalSeconds) * 100
+        ? ((focusBlockTotalSeconds - focusBlockRemainingSeconds) / focusBlockTotalSeconds) * 100
         : 0;
       updateDocumentPipWindow({
         taskName: focusBlock.name,
@@ -3954,10 +4066,13 @@ function TYMVERA() {
                   totalSeconds={focusBlockTotalSeconds}
                   isDetached={isDetached}
                   onTogglePause={toggleFocusTimerPause}
-                  onDetachTimer={({ block: b, initialCoords }) => setDetachedTimer({ block: b, coords: initialCoords })}
+                  onDetachTimer={({ block: b, initialCoords, isCurrentlyHeld }) =>
+                    setDetachedTimer({ block: b, coords: initialCoords, isCurrentlyHeld })
+                  }
                   onDockBack={() => setDetachedTimer(null)}
                   onOpenFullscreen={() => setFullscreenTimerBlock(block)}
                   onStartFocusTimer={(b) => setSelectedFocusBlockId(b.id)}
+                  onLaunchPip={() => handleOpenPip(block)}
                   onInAppToast={setInAppToast}
                 />
               );
@@ -4445,6 +4560,108 @@ function TYMVERA() {
             </button>
           </div>
         )}
+
+        {/* ─── ROUTINES LIBRARY (FIRST IN SETTINGS) ─────────────────────────── */}
+        <div className="flex justify-between items-end mb-3 ml-2">
+          <div className={`text-[11px] font-mono tracking-[2px] font-bold uppercase ${themeColors.text3}`}>
+            Daily Routines
+          </div>
+        </div>
+        <div className={`${themeColors.surface} border ${themeColors.border} rounded-[32px] overflow-hidden mb-8 shadow-sm`}>
+          <button
+            onClick={() =>
+              openEditingPreset({
+                id: `new_${Date.now()}`,
+                name: "",
+                start: "08:00",
+                end: "09:00",
+                priority: "medium",
+                days: [1, 2, 3, 4, 5],
+                icon: "ads_click",
+                zeroXp: false,
+              })
+            }
+            className="w-full p-5 flex items-center justify-center gap-2 text-blue-500 font-black border-b border-gray-100 dark:border-[#222] active:bg-gray-50 dark:active:bg-[#1a1a1a] transition-colors text-lg"
+          >
+            <Icon name="add" size={20} /> Create New Routine
+          </button>
+
+          <div className="max-h-[50vh] overflow-y-auto scroll-smooth">
+            {sortedPresets.length === 0 ? (
+              <div className="p-8 text-center text-gray-400 text-xs font-medium">
+                No routines configured. Tap "Create New Routine" above to add your first routine.
+              </div>
+            ) : sortedPresets.map((p) => {
+                const tObj = to12hObj(p.start);
+                return (
+                  <div
+                    key={p.id}
+                    onClick={() => openEditingPreset(p)}
+                    className="flex flex-col p-5 border-b border-gray-100 dark:border-[#222] active:bg-gray-50 dark:active:bg-[#1a1a1a] cursor-pointer transition-colors group"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-light tracking-tight leading-none text-gray-900 dark:text-white">
+                            {tObj.time}
+                          </span>
+                          <span className="text-xs font-bold text-gray-500 tracking-wider uppercase">
+                            {tObj.period}
+                          </span>
+                        </div>
+                        <div className="text-sm font-black mt-2 flex items-center gap-1.5 text-gray-800 dark:text-gray-200 flex-wrap">
+                          <Icon name={p.icon || "monitoring"} size={16} />
+                          <span>{p.name}</span>
+                          {p.priority && !p.zeroXp && (
+                            <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${pBadge(p.priority).bg}`}>
+                              {pBadge(p.priority).text}
+                            </span>
+                          )}
+                          {p.zeroXp && (
+                            <span className="text-[9px] uppercase tracking-wider bg-purple-500/15 text-purple-400 border border-purple-500/30 px-1.5 py-0.5 rounded font-black">
+                              0XP
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-xs font-mono font-bold text-gray-400">
+                          {mins(p.start, p.end)}m
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Delete routine "${p.name}"?`)) {
+                              deletePreset(p.id);
+                            }
+                          }}
+                          className="p-1.5 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                          title="Delete routine"
+                        >
+                          <Icon name="delete" size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  <div className="flex gap-1.5">
+                    {DAYS.map((d, i) => (
+                      <div
+                        key={i}
+                        className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${
+                          p.days.includes(i)
+                            ? "bg-blue-500 text-white shadow-sm"
+                            : "bg-gray-100 dark:bg-[#222] text-gray-400"
+                        }`}
+                      >
+                        {d}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {/* ─── SMART WAKE-UP & SLEEP ALARMS CARD ────────────────────────────── */}
         <div className={`text-[11px] font-mono tracking-[2px] font-bold uppercase ${themeColors.text3} mb-3 ml-2`}>
@@ -5027,108 +5244,6 @@ function TYMVERA() {
           </div>
         </div>
 
-        {/* ─── ROUTINES LIBRARY ─────────────────────────────────────────────── */}
-        <div className="flex justify-between items-end mb-3 ml-2">
-          <div className={`text-[11px] font-mono tracking-[2px] font-bold uppercase ${themeColors.text3}`}>
-            Daily Routines
-          </div>
-        </div>
-        <div className={`${themeColors.surface} border ${themeColors.border} rounded-[32px] overflow-hidden mb-8 shadow-sm`}>
-          <button
-            onClick={() =>
-              openEditingPreset({
-                id: `new_${Date.now()}`,
-                name: "",
-                start: "08:00",
-                end: "09:00",
-                priority: "medium",
-                days: [1, 2, 3, 4, 5],
-                icon: "ads_click",
-                zeroXp: false,
-              })
-            }
-            className="w-full p-5 flex items-center justify-center gap-2 text-blue-500 font-black border-b border-gray-100 dark:border-[#222] active:bg-gray-50 dark:active:bg-[#1a1a1a] transition-colors text-lg"
-          >
-            <Icon name="add" size={20} /> Create New Routine
-          </button>
-
-          <div className="max-h-[50vh] overflow-y-auto scroll-smooth">
-            {sortedPresets.length === 0 ? (
-              <div className="p-8 text-center text-gray-400 text-xs font-medium">
-                No routines configured. Tap "Create New Routine" above to add your first routine.
-              </div>
-            ) : sortedPresets.map((p) => {
-                const tObj = to12hObj(p.start);
-                return (
-                  <div
-                    key={p.id}
-                    onClick={() => openEditingPreset(p)}
-                    className="flex flex-col p-5 border-b border-gray-100 dark:border-[#222] active:bg-gray-50 dark:active:bg-[#1a1a1a] cursor-pointer transition-colors group"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-3xl font-light tracking-tight leading-none text-gray-900 dark:text-white">
-                            {tObj.time}
-                          </span>
-                          <span className="text-xs font-bold text-gray-500 tracking-wider uppercase">
-                            {tObj.period}
-                          </span>
-                        </div>
-                        <div className="text-sm font-black mt-2 flex items-center gap-1.5 text-gray-800 dark:text-gray-200 flex-wrap">
-                          <Icon name={p.icon || "monitoring"} size={16} />
-                          <span>{p.name}</span>
-                          {p.priority && !p.zeroXp && (
-                            <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${pBadge(p.priority).bg}`}>
-                              {pBadge(p.priority).text}
-                            </span>
-                          )}
-                          {p.zeroXp && (
-                            <span className="text-[9px] uppercase tracking-wider bg-purple-500/15 text-purple-400 border border-purple-500/30 px-1.5 py-0.5 rounded font-black">
-                              0XP
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="text-xs font-mono font-bold text-gray-400">
-                          {mins(p.start, p.end)}m
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm(`Delete routine "${p.name}"?`)) {
-                              deletePreset(p.id);
-                            }
-                          }}
-                          className="p-1.5 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                          title="Delete routine"
-                        >
-                          <Icon name="delete" size={18} />
-                        </button>
-                      </div>
-                    </div>
-                  <div className="flex gap-1.5">
-                    {DAYS.map((d, i) => (
-                      <div
-                        key={i}
-                        className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${
-                          p.days.includes(i)
-                            ? "bg-blue-500 text-white shadow-sm"
-                            : "bg-gray-100 dark:bg-[#222] text-gray-400"
-                        }`}
-                      >
-                        {d}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Appearance */}
         <div className={`text-[11px] font-mono tracking-[2px] font-bold uppercase ${themeColors.text3} mb-3 ml-2`}>
           Appearance
@@ -5344,12 +5459,18 @@ function TYMVERA() {
 
           {/* Overlays & Modals */}
           {detachedTimer && (
-            <FloatingBottleTimer
+            <FloatingTaskTimer
               block={detachedTimer.block}
               isPaused={isTimerPaused}
               remainingSeconds={focusBlockRemainingSeconds}
               totalSeconds={focusBlockTotalSeconds}
+              completedPct={
+                focusBlockTotalSeconds > 0
+                  ? ((focusBlockTotalSeconds - focusBlockRemainingSeconds) / focusBlockTotalSeconds) * 100
+                  : 0
+              }
               initialPosition={detachedTimer.coords}
+              isCurrentlyHeld={detachedTimer.isCurrentlyHeld}
               onTogglePause={toggleFocusTimerPause}
               onDockBack={() => setDetachedTimer(null)}
               onOpenFullscreen={() => setFullscreenTimerBlock(detachedTimer.block)}
@@ -5358,11 +5479,16 @@ function TYMVERA() {
           )}
 
           {fullscreenTimerBlock && (
-            <FullscreenBottleModal
+            <FullscreenFocusModal
               block={fullscreenTimerBlock}
               isPaused={isTimerPaused}
               remainingSeconds={focusBlockRemainingSeconds}
               totalSeconds={focusBlockTotalSeconds}
+              completedPct={
+                focusBlockTotalSeconds > 0
+                  ? ((focusBlockTotalSeconds - focusBlockRemainingSeconds) / focusBlockTotalSeconds) * 100
+                  : 0
+              }
               onTogglePause={toggleFocusTimerPause}
               onClose={() => setFullscreenTimerBlock(null)}
               onInAppToast={setInAppToast}

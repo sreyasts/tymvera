@@ -1,5 +1,4 @@
 import React from "react";
-import LiquidBottleGauge from "./LiquidBottleGauge";
 import { formatTimerSeconds, openDocumentPipWindow } from "../services/pipTimerEngine";
 
 const Icon = ({ name, size = 24, className = "", style = {} }) => (
@@ -12,24 +11,23 @@ const Icon = ({ name, size = 24, className = "", style = {} }) => (
 );
 
 /**
- * FullscreenBottleModal: Minimalist, zen obsidian full-screen view
- * featuring the giant liquid bottle gauge draining like battery percentage.
+ * FullscreenFocusModal: Minimalist, zen obsidian full-screen view.
+ * Features background progress fill covering the completed portion,
+ * giant monospaced digits, and pause/resume controls.
  */
-export default function FullscreenBottleModal({
+export default function FullscreenFocusModal({
   block,
   isPaused = false,
   remainingSeconds = 0,
   totalSeconds = 3600,
+  completedPct = 0,
   onTogglePause,
   onClose,
   onInAppToast,
 }) {
   if (!block) return null;
 
-  const remainingPct = totalSeconds > 0
-    ? Math.max(0, Math.min(100, (remainingSeconds / totalSeconds) * 100))
-    : 0;
-
+  const clampedPct = Math.max(0, Math.min(100, Math.round(completedPct)));
   const formattedTime = formatTimerSeconds(remainingSeconds);
 
   const handleLaunchPip = async () => {
@@ -38,7 +36,7 @@ export default function FullscreenBottleModal({
         taskName: block.name,
         timeFormatted: formattedTime,
         isPaused,
-        progressPct: remainingPct,
+        progressPct: clampedPct,
         onTogglePause,
         onClose: () => {},
       });
@@ -46,7 +44,7 @@ export default function FullscreenBottleModal({
         onInAppToast({
           id: Date.now(),
           title: "PiP Window Opened",
-          body: `Picture-in-Picture launched for "${block.name}".`,
+          body: `Picture-in-Picture active for "${block.name}".`,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         });
       }
@@ -57,15 +55,28 @@ export default function FullscreenBottleModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[10000] bg-[#050505] text-white flex flex-col justify-between p-6 sm:p-12 select-none animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[10000] bg-[#050505] text-white flex flex-col justify-between p-6 sm:p-12 select-none animate-in fade-in duration-300 overflow-hidden">
+      {/* ─── BACKGROUND COMPLETED PROGRESS FILL ─── */}
+      <div
+        className="absolute inset-y-0 left-0 pointer-events-none transition-all duration-1000 ease-linear"
+        style={{
+          width: `${Math.max(1, Math.min(100, clampedPct))}%`,
+          background: isPaused
+            ? "linear-gradient(90deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.18) 99%, rgba(251, 191, 36, 0.6) 100%)"
+            : "linear-gradient(90deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.22) 99%, rgba(96, 165, 250, 0.7) 100%)",
+        }}
+      >
+        <div className="absolute top-0 bottom-0 right-0 w-[3px] bg-blue-500 shadow-[0_0_20px_#3b82f6]" />
+      </div>
+
       {/* Top Header */}
-      <div className="flex justify-between items-center max-w-xl w-full mx-auto">
+      <div className="flex justify-between items-center max-w-2xl w-full mx-auto relative z-10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-blue-400">
-            <Icon name={block.icon || "monitoring"} size={22} />
+          <div className="w-11 h-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-blue-400">
+            <Icon name={block.icon || "monitoring"} size={24} />
           </div>
           <div>
-            <h2 className="text-lg font-black tracking-tight text-white">{block.name}</h2>
+            <h2 className="text-xl font-black tracking-tight text-white">{block.name}</h2>
             <div className="text-xs font-mono text-gray-400">
               {block.start} – {block.end}
             </div>
@@ -95,54 +106,43 @@ export default function FullscreenBottleModal({
         </div>
       </div>
 
-      {/* Main Center Display: Giant Liquid Bottle & Countdown */}
-      <div className="flex flex-col items-center justify-center my-auto py-6">
-        {/* Giant Liquid Bottle Gauge */}
-        <div className="relative mb-6 transform hover:scale-105 transition-transform duration-500">
-          <LiquidBottleGauge
-            percent={remainingPct}
-            isPaused={isPaused}
-            width={110}
-            height={190}
-            showLabel={false}
-          />
-        </div>
-
-        {/* Battery / Energy Percentage */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 mb-4 backdrop-blur-md">
+      {/* Main Center Display: Giant Digital Readout & Completed % */}
+      <div className="flex flex-col items-center justify-center my-auto py-8 relative z-10">
+        {/* Progress Percentage Badge */}
+        <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/5 border border-white/10 mb-6 backdrop-blur-md">
           <span
             className="w-2.5 h-2.5 rounded-full animate-ping"
-            style={{ backgroundColor: isPaused ? "#F59E0B" : "#10B981" }}
+            style={{ backgroundColor: isPaused ? "#F59E0B" : "#3b82f6" }}
           />
-          <span className="text-sm font-mono font-black tracking-wider text-gray-300">
-            {Math.round(remainingPct)}% Energy Remaining
+          <span className="text-sm font-mono font-black tracking-wider text-blue-400">
+            {clampedPct}% Completed
           </span>
         </div>
 
         {/* Giant Monospaced Digits */}
-        <div className="text-6xl sm:text-8xl font-black font-mono tracking-tighter text-white drop-shadow-2xl my-2">
+        <div className="text-7xl sm:text-9xl font-black font-mono tracking-tighter text-white drop-shadow-2xl my-2">
           {formattedTime}
         </div>
 
-        <div className="text-xs font-mono tracking-widest text-gray-500 uppercase mt-1">
-          {isPaused ? "Session Suspended" : "Pure Resonance Focus"}
+        <div className="text-xs font-mono tracking-widest text-gray-400 uppercase mt-2">
+          {isPaused ? "Session Paused" : "Routine in Progress"}
         </div>
       </div>
 
       {/* Bottom Controls */}
-      <div className="max-w-md w-full mx-auto flex items-center justify-center gap-4">
+      <div className="max-w-md w-full mx-auto flex items-center justify-center gap-4 relative z-10">
         {/* Pause / Resume Button */}
         <button
           type="button"
           onClick={onTogglePause}
           className={`flex-1 py-4 px-6 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all active:scale-98 shadow-xl ${
             isPaused
-              ? "bg-emerald-500 hover:bg-emerald-400 text-black shadow-emerald-500/25"
-              : "bg-amber-500 hover:bg-amber-400 text-black shadow-amber-500/25"
+              ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/30"
+              : "bg-amber-500 hover:bg-amber-400 text-black shadow-amber-500/30"
           }`}
         >
           <Icon name={isPaused ? "play_arrow" : "pause"} size={22} />
-          <span>{isPaused ? "Resume Session" : "Pause Session"}</span>
+          <span>{isPaused ? "Resume Routine" : "Pause Routine"}</span>
         </button>
       </div>
     </div>
