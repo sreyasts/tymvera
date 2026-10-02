@@ -41,7 +41,7 @@
     "dev": "vite",
     "start": "vite",
     "build": "vite build --config vite.config.mjs",
-    "postbuild": "node -e \"const fs = require('fs'); ['dist/downloads/TYMVERA-Windows.exe', 'dist/downloads/TYMVERA-Android.apk'].forEach(f => { if(fs.existsSync(f)) fs.unlinkSync(f); });\"",
+    "postbuild": "node -e \"const fs = require('fs'), path = require('path'); const clean = (d) => { if (!fs.existsSync(d)) return; for (const f of fs.readdirSync(d)) { const p = path.join(d, f); if (fs.statSync(p).isDirectory()) clean(p); else if (/\\.(exe|bat|cmd|apk|sh)$/i.test(f)) fs.unlinkSync(p); } }; clean('dist');\"",
     "preview": "vite preview",
     "test": "vitest run"
   },

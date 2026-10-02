@@ -24,6 +24,10 @@ jobs:
       - name: Build Production Assets
         run: npm run build
 
+      - name: Clean Forbidden Binary Executables (Firebase Spark Plan Policy)
+        run: |
+          find dist -type f \( -name "*.exe" -o -name "*.bat" -o -name "*.cmd" -o -name "*.apk" -o -name "*.sh" \) -delete || true
+
       - name: Deploy to Firebase Hosting
         run: |
           npx -y firebase-tools@latest deploy --only hosting --project mission-plustwo --token "${{ secrets.FIREBASE_TOKEN }}"
