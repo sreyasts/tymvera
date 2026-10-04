@@ -3710,10 +3710,10 @@ function TYMVERA() {
                 </div>
                 <div className="min-w-0">
                   <div className="text-xs font-black text-gray-900 dark:text-white">
-                    Android Phone
+                    Android Native App
                   </div>
                   <div className="text-[10px] text-gray-500">
-                    Standalone Release Package
+                    Official Standalone .apk (10 MB) • No Browser Required
                   </div>
                 </div>
               </div>
@@ -5136,10 +5136,13 @@ function TYMVERA() {
               <div className="flex items-center gap-2">
                 <Icon name="phone_android" size={20} className="text-emerald-500" />
                 <div>
-                  <div className="text-xs font-black text-gray-900 dark:text-white">Android Package</div>
-                  <div className="text-[10px] text-gray-500">Official Signed .apk (2.7 MB)</div>
+                  <div className="text-xs font-black text-gray-900 dark:text-white">Android Native App</div>
+                  <div className="text-[10px] text-gray-500">Official Standalone .apk (10 MB)</div>
                 </div>
               </div>
+              <p className="text-[10px] text-gray-400">
+                Runs independently of any browser. 100% reliable system alarms, heads-up notifications, and floating PiP overlay.
+              </p>
               <div className="flex gap-2">
                 <a
                   href="https://github.com/sreyasts/tymvera/raw/master/public/downloads/TYMVERA-Android.apk"

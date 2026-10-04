@@ -60,12 +60,16 @@ function getMasterDestination(ctx) {
 }
 
 let silentAudioEl = null;
+let keepAliveStarted = false;
 
 /**
  * Starts an inaudible audio carrier and active MediaSession to keep the mobile OS from freezing
  * timer threads and audio contexts when the device screen locks or is placed in a pocket.
  */
 export function startAudioKeepAlive() {
+  if (keepAliveStarted) return;
+  keepAliveStarted = true;
+
   try {
     const ctx = getAudioContext();
     if (ctx) {
@@ -77,7 +81,7 @@ export function startAudioKeepAlive() {
         keepAliveOsc = ctx.createOscillator();
         keepAliveGain = ctx.createGain();
 
-        // Completely inaudible amplitude (0.00002) at 35Hz
+        // Inaudible amplitude (0.00002) at 35Hz
         keepAliveGain.gain.setValueAtTime(0.00002, ctx.currentTime);
         keepAliveOsc.frequency.setValueAtTime(35, ctx.currentTime);
 
@@ -117,22 +121,35 @@ export function startAudioKeepAlive() {
 
 /**
  * Global unlocker attached to user interactions (touch, click, keydown).
- * Primes the audio context and launches keep-alive carrier immediately.
+ * Primes the audio context and launches keep-alive carrier once, then removes listeners.
  */
 export function initAudioContextUnlocker() {
   if (typeof window === 'undefined') return;
 
+  const events = ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown'];
+  let handled = false;
+
   const unlockAudio = () => {
-    const ctx = getAudioContext();
-    if (ctx && ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
-    startAudioKeepAlive();
+    if (handled) return;
+    handled = true;
+
+    try {
+      const ctx = getAudioContext();
+      if (ctx && ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+      startAudioKeepAlive();
+    } catch (e) {}
+
+    events.forEach((evt) => {
+      try {
+        window.removeEventListener(evt, unlockAudio, { capture: true });
+      } catch (e) {}
+    });
   };
 
-  const events = ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown'];
   events.forEach((evt) => {
-    window.addEventListener(evt, unlockAudio, { passive: true, capture: true });
+    window.addEventListener(evt, unlockAudio, { passive: true, capture: true, once: true });
   });
 }
 

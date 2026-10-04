@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.web.tymvera.twa",
+      "sha256_cert_fingerprints": [
+        "B4:39:B1:F6:16:6C:B3:26:E4:A5:71:8A:4B:A8:A9:07:1B:58:CD:6F:D6:0C:E6:C3:ED:74:91:05:5F:8F:FE:21"
+      ]
+    }
+  }
+]

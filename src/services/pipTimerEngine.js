@@ -117,6 +117,16 @@ export async function launchSystemPipTimer({
 
   currentPipParams = { taskName, timeFormatted, isPaused, progressPct, onTogglePause, onClose };
 
+  // 0. Native Android PiP (Activity-level floating OS window over all apps)
+  if (typeof window !== 'undefined' && window.NativeAndroid && typeof window.NativeAndroid.enterPipMode === 'function') {
+    try {
+      window.NativeAndroid.enterPipMode();
+      return { mode: 'native_android' };
+    } catch (nativePipErr) {
+      console.warn('[PiP Engine] Native Android PiP failed:', nativePipErr);
+    }
+  }
+
   // 1. Focus existing PiP window if open
   if (activePipWindow && !activePipWindow.closed) {
     try {

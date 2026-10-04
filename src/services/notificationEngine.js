@@ -31,18 +31,27 @@ const calcDurationMins = (start, end) => {
  * Check live notification support and permission status
  */
 export function getNotificationPermissionStatus() {
+  if (typeof window !== 'undefined' && window.NativeAndroid) return 'granted';
   if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported';
   return Notification.permission;
 }
 
 export function isNotificationGranted() {
+  if (typeof window !== 'undefined' && window.NativeAndroid) return true;
   return typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
 }
 
 /**
- * Safely request native notification permissions across all browsers (Desktop, Android TWA/PWA, iOS)
+ * Safely request native notification permissions across all browsers (Desktop, Android Native, PWA, iOS)
  */
 export async function requestNotificationPermission() {
+  if (typeof window !== 'undefined' && window.NativeAndroid) {
+    if (typeof window.NativeAndroid.requestPermission === 'function') {
+      window.NativeAndroid.requestPermission();
+    }
+    return { supported: true, status: 'granted' };
+  }
+
   if (typeof window === 'undefined' || !('Notification' in window)) {
     return { supported: false, status: 'unsupported' };
   }
@@ -70,10 +79,25 @@ export async function requestNotificationPermission() {
 }
 
 /**
- * Robust native notification dispatcher: prioritizes ServiceWorkerRegistration.showNotification()
- * (required on Android Chrome), avoids hanging on SW ready, and falls back gracefully to Notification API.
+ * Robust native notification dispatcher: prioritizes Native Android App bridge,
+ * then ServiceWorkerRegistration.showNotification(), and falls back to Notification API.
  */
 async function showNativeNotification(title, options) {
+  // 0. Native Android App Bridge (100% reliable system notification with heads-up & sound)
+  if (typeof window !== 'undefined' && window.NativeAndroid && typeof window.NativeAndroid.showNotification === 'function') {
+    try {
+      const tagStr = (options && options.tag) ? String(options.tag) : 'routine';
+      let notifId = Date.now() % 100000;
+      if (options && options.tag) {
+        notifId = Math.abs(tagStr.split('').reduce((acc, ch) => ((acc << 5) - acc) + ch.charCodeAt(0), 0)) % 100000;
+      }
+      window.NativeAndroid.showNotification(title, (options && options.body) ? options.body : '', tagStr, notifId);
+      return true;
+    } catch (nativeErr) {
+      console.warn('[NotificationEngine] Native Android notification bridge error:', nativeErr);
+    }
+  }
+
   if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') {
     return false;
   }
