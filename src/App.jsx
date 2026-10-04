@@ -29,7 +29,9 @@ import { startBackgroundWorkerTimer, stopBackgroundWorkerTimer } from "./service
 import TaskSectionTimer from "./components/TaskSectionTimer";
 import FloatingTaskTimer from "./components/FloatingTaskTimer";
 import FullscreenFocusModal from "./components/FullscreenFocusModal";
+import InAppDownloadModal from "./components/InAppDownloadModal";
 import { launchSystemPipTimer, openDocumentPipWindow, updateDocumentPipWindow, formatTimerSeconds } from "./services/pipTimerEngine";
+import { isAppInstalled, detectUserPlatform, APP_PACKAGE_INFO } from "./services/appDownloadEngine";
 
 import {
   signInWithGoogle,
@@ -1006,6 +1008,8 @@ function TYMVERA() {
   const [showFirebaseModal, setShowFirebaseModal] = useState(false);
   const [showAddTaskGraphModal, setShowAddTaskGraphModal] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const userPlatform = useMemo(() => detectUserPlatform(), []);
+  const isStandaloneApp = useMemo(() => isAppInstalled(), []);
   const [lastSyncedTime, setLastSyncedTime] = useState(null);
 
   // Storage Inspector State
@@ -3593,155 +3597,15 @@ function TYMVERA() {
     );
   };
 
-  // ─── RENDER: APP DOWNLOADS MODAL ────────────────────────────────────────────
+  // ─── RENDER: IN-APP STREAMING DOWNLOAD MODAL ───────────────────────────────
   const renderDownloadModal = () => {
-    if (!showDownloadModal) return null;
-
-    const handleInstallDeviceClick = async () => {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === "accepted") {
-          setDeferredPrompt(null);
-          setShowDownloadModal(false);
-        }
-      } else {
-        setInAppToast({
-          id: Date.now(),
-          title: "Install via Browser Menu",
-          body: "Tap the browser menu (⋮) and select 'Install TYMVERA' or 'Add to Home screen' for verified zero-warning installation.",
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        });
-      }
-    };
-
     return (
-      <div className="fixed inset-0 z-[5000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in select-none">
-        <div className={`${themeColors.surface} border ${themeColors.border} rounded-[32px] p-6 max-w-sm w-full shadow-2xl relative`}>
-          <button
-            onClick={() => setShowDownloadModal(false)}
-            className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 dark:hover:text-white"
-          >
-            <Icon name="close" size={20} />
-          </button>
-
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold">
-              <Icon name="verified" size={24} />
-            </div>
-            <div>
-              <h3 className="text-base font-black text-gray-900 dark:text-white">TYMVERA Official App</h3>
-              <p className="text-xs text-gray-500">Verified Desktop & Mobile Application</p>
-            </div>
-          </div>
-
-          <p className="text-xs text-gray-500 mb-5 leading-relaxed">
-            Install the verified application for background notifications, lock screen alarms, and floating Picture-in-Picture focus.
-          </p>
-
-          {/* Primary Recommended: Official 1-Click Installation */}
-          <div className="mb-4 p-4 rounded-2xl bg-gradient-to-br from-blue-600/10 via-blue-500/5 to-transparent border border-blue-500/30">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <span className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-1.5">
-                <Icon name="verified_user" size={16} className="text-blue-500" />
-                Verified App Engine
-              </span>
-              <span className="text-[9px] font-mono font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                0 WARNINGS
-              </span>
-            </div>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3 leading-snug">
-              Installs directly through Google Play Services on Android or Microsoft Windows App Engine on PC.
-            </p>
-            <button
-              type="button"
-              onClick={handleInstallDeviceClick}
-              className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black shadow-md shadow-blue-500/25 active:scale-95 transition-all flex items-center justify-center gap-2"
-            >
-              <Icon name="download_for_offline" size={18} />
-              Install on This Device
-            </button>
-          </div>
-
-          {/* Secondary Standalone Packages */}
-          <div className="text-[10px] font-mono uppercase tracking-wider text-gray-400 font-bold mb-2 ml-1">
-            Standalone Packages
-          </div>
-          <div className="space-y-2.5 mb-4">
-            {/* Windows Desktop Option */}
-            <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-[#141414] border border-gray-100 dark:border-[#242424] flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-blue-600/10 text-blue-500 flex items-center justify-center font-bold shrink-0">
-                  <Icon name="desktop_windows" size={18} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-black text-gray-900 dark:text-white">
-                    Windows PC
-                  </div>
-                  <div className="text-[10px] text-gray-500">
-                    Standalone Desktop Package
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-1.5 shrink-0">
-                <a
-                  href="https://github.com/sreyasts/tymvera/raw/master/public/downloads/TYMVERA-Windows.exe"
-                  download="TYMVERA-Windows.exe"
-                  className="px-2.5 py-1.5 rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-xs font-bold text-gray-800 dark:text-gray-200 active:scale-95 transition-all"
-                >
-                  .exe
-                </a>
-                <a
-                  href="/downloads/TYMVERA-Windows.zip"
-                  download="TYMVERA-Windows.zip"
-                  className="px-2.5 py-1.5 rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-xs font-bold text-gray-800 dark:text-gray-200 active:scale-95 transition-all"
-                  title="Download Portable .zip"
-                >
-                  .zip
-                </a>
-              </div>
-            </div>
-
-            {/* Android Option */}
-            <div className="p-3.5 rounded-2xl bg-gray-50 dark:bg-[#141414] border border-gray-100 dark:border-[#242424] flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-emerald-600/10 text-emerald-500 flex items-center justify-center font-bold shrink-0">
-                  <Icon name="phone_android" size={18} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-black text-gray-900 dark:text-white">
-                    Android Native App
-                  </div>
-                  <div className="text-[10px] text-gray-500">
-                    Official Standalone .apk (10 MB) • No Browser Required
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-1.5 shrink-0">
-                <a
-                  href="https://github.com/sreyasts/tymvera/raw/master/public/downloads/TYMVERA-Android.apk"
-                  download="TYMVERA-Android.apk"
-                  className="px-2.5 py-1.5 rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-xs font-bold text-gray-800 dark:text-gray-200 active:scale-95 transition-all"
-                >
-                  .apk
-                </a>
-                <a
-                  href="/downloads/TYMVERA-Android.zip"
-                  download="TYMVERA-Android.zip"
-                  className="px-2.5 py-1.5 rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-xs font-bold text-gray-800 dark:text-gray-200 active:scale-95 transition-all"
-                  title="Download .zip package"
-                >
-                  .zip
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-[11px] text-center text-gray-400 font-mono">
-            Direct downloads hosted on GitHub & Firebase CDN
-          </div>
-        </div>
-      </div>
+      <InAppDownloadModal
+        isOpen={showDownloadModal}
+        onClose={() => setShowDownloadModal(false)}
+        initialPlatform={userPlatform}
+        themeColors={themeColors}
+      />
     );
   };
 
@@ -3808,16 +3672,26 @@ function TYMVERA() {
             <Icon name="calendar_month" size={18} className={themeColors.text2} />
           </button>
 
-          {/* Quick App Download Button */}
-          <button
-            onClick={() => setShowDownloadModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/25 text-xs font-black shadow-sm active:scale-95 transition-all"
-            title="Download TYMVERA for Windows (.exe) and Android (.apk)"
-          >
-            <Icon name="download" size={15} />
-            <span className="hidden sm:inline">Get App</span>
-            <span className="text-[10px] font-mono opacity-80">.exe / .apk</span>
-          </button>
+          {/* Quick App Download Button — Hidden when running inside the installed standalone app */}
+          {!isStandaloneApp && (
+            <button
+              onClick={() => setShowDownloadModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/25 text-xs font-black shadow-sm active:scale-95 transition-all"
+              title={
+                userPlatform === "android"
+                  ? "Download Official TYMVERA Android Native App (.apk)"
+                  : "Download Official TYMVERA Windows Desktop App (.exe)"
+              }
+            >
+              <Icon name={userPlatform === "android" ? "phone_android" : userPlatform === "windows" ? "desktop_windows" : "download"} size={15} />
+              <span className="hidden sm:inline">
+                {userPlatform === "android" ? "Get Android App" : userPlatform === "windows" ? "Get Windows App" : "Get App"}
+              </span>
+              <span className="text-[10px] font-mono opacity-80">
+                {userPlatform === "android" ? ".apk" : userPlatform === "windows" ? ".exe" : ".apk / .exe"}
+              </span>
+            </button>
+          )}
 
           {/* Offline Indicator or Google Auth Status Badge */}
           {!isOnline ? (
@@ -5082,95 +4956,68 @@ function TYMVERA() {
           </div>
         </div>
 
-        {/* ─── NATIVE APP DOWNLOADS (WINDOWS & ANDROID) CARD ─────────────────── */}
-        <div className={`text-[11px] font-mono tracking-[2px] font-bold uppercase ${themeColors.text3} mb-3 ml-2 flex items-center justify-between`}>
-          <span>Native Desktop & Mobile Apps</span>
-          <span className="text-[9px] bg-blue-500/10 text-blue-500 border border-blue-500/20 px-2 py-0.5 rounded-full font-bold">Recommended for Background Alarms</span>
-        </div>
-        <div className={`${themeColors.surface} border ${themeColors.border} rounded-[32px] p-6 mb-8 shadow-sm space-y-4`}>
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500 shrink-0">
-              <Icon name="download" size={22} />
+        {/* ─── NATIVE APP DOWNLOADS (FILTERED BY PLATFORM & HIDDEN IN INSTALLED APP) ─── */}
+        {!isStandaloneApp && (
+          <div>
+            <div className={`text-[11px] font-mono tracking-[2px] font-bold uppercase ${themeColors.text3} mb-3 ml-2 flex items-center justify-between`}>
+              <span>{userPlatform === "android" ? "Official Android Native App" : userPlatform === "windows" ? "Official Windows Desktop App" : "Official Standalone App"}</span>
+              <span className="text-[9px] bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">100% Offline & Background Alarms</span>
             </div>
-            <div>
-              <div className="font-black text-sm text-gray-900 dark:text-white">
-                Download Standalone TYMVERA App
-              </div>
-              <p className={`text-xs ${themeColors.text3} mt-1 leading-relaxed`}>
-                Browsers suspend web pages and alarms when closed or swiped away. Install our official standalone builds for guaranteed background notifications, PiP focus mode, and tray persistence.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-            {/* Windows App Download */}
-            <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/[0.03] border border-black/5 dark:border-white/5 flex flex-col justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Icon name="laptop" size={20} className="text-blue-500" />
+            <div className={`${themeColors.surface} border ${themeColors.border} rounded-[32px] p-6 mb-8 shadow-sm space-y-4`}>
+              <div className="flex items-start gap-3">
+                <div
+                  className="w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-white shrink-0"
+                  style={{
+                    backgroundColor: userPlatform === "android" ? "rgba(16, 185, 129, 0.15)" : "rgba(59, 130, 246, 0.15)",
+                    color: userPlatform === "android" ? "#10b981" : "#3b82f6",
+                    border: `1px solid ${userPlatform === "android" ? "rgba(16, 185, 129, 0.3)" : "rgba(59, 130, 246, 0.3)"}`,
+                  }}
+                >
+                  <Icon name={userPlatform === "android" ? "phone_android" : userPlatform === "windows" ? "desktop_windows" : "download"} size={22} />
+                </div>
                 <div>
-                  <div className="text-xs font-black text-gray-900 dark:text-white">Windows Desktop</div>
-                  <div className="text-[10px] text-gray-500">Standalone .exe • Background Tray</div>
+                  <div className="font-black text-sm text-gray-900 dark:text-white">
+                    {userPlatform === "android" ? "Install TYMVERA for Android" : userPlatform === "windows" ? "Install TYMVERA for Windows" : "Install Standalone TYMVERA"}
+                  </div>
+                  <p className={`text-xs ${themeColors.text3} mt-1 leading-relaxed`}>
+                    {userPlatform === "android"
+                      ? "Official standalone Android app (.apk). Runs completely independent of Brave or Chrome, with 0ms offline startup, guaranteed AlarmManager alerts, and floating PiP overlay."
+                      : "Official standalone desktop application. Runs natively in Windows with background system tray persistence, hardware PiP widget, and zero virus warnings."}
+                  </p>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <a
-                  href="https://github.com/sreyasts/tymvera/raw/master/public/downloads/TYMVERA-Windows.exe"
-                  download="TYMVERA-Windows.exe"
-                  className="flex-1 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-[11px] text-center flex items-center justify-center gap-1 active:scale-95 transition-all shadow-md shadow-blue-500/20"
-                >
-                  <Icon name="download" size={14} /> Download .exe
-                </a>
-                <a
-                  href="/downloads/TYMVERA-Windows.zip"
-                  download="TYMVERA-Windows.zip"
-                  className="py-2 px-2.5 rounded-xl bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-gray-800 dark:text-gray-200 font-bold text-[10px] text-center flex items-center justify-center"
-                  title="Download Portable .zip"
-                >
-                  .zip
-                </a>
-              </div>
-            </div>
 
-            {/* Android App Download */}
-            <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/[0.03] border border-black/5 dark:border-white/5 flex flex-col justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Icon name="phone_android" size={20} className="text-emerald-500" />
-                <div>
-                  <div className="text-xs font-black text-gray-900 dark:text-white">Android Native App</div>
-                  <div className="text-[10px] text-gray-500">Official Standalone .apk (10 MB)</div>
-                </div>
+              {/* Action Button: Opens In-App Streaming Download with Progress Bar */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDownloadModal(true)}
+                  className="w-full py-3.5 px-4 rounded-2xl text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98]"
+                  style={{
+                    background: userPlatform === "android"
+                      ? "linear-gradient(135deg, #059669 0%, #10b981 100%)"
+                      : "linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)",
+                    boxShadow: `0 8px 24px ${userPlatform === "android" ? "rgba(16, 185, 129, 0.25)" : "rgba(59, 130, 246, 0.25)"}`,
+                  }}
+                >
+                  <Icon name="download" size={18} />
+                  <span>
+                    {userPlatform === "android"
+                      ? "Download Official Android App (.apk • 8.0 MB)"
+                      : userPlatform === "windows"
+                      ? "Download Official Windows App (.exe • 80 KB)"
+                      : "Download Official Standalone Package"}
+                  </span>
+                </button>
               </div>
-              <p className="text-[10px] text-gray-400">
-                Runs independently of any browser. 100% reliable system alarms, heads-up notifications, and floating PiP overlay.
-              </p>
-              <div className="flex gap-2">
-                <a
-                  href="https://github.com/sreyasts/tymvera/raw/master/public/downloads/TYMVERA-Android.apk"
-                  download="TYMVERA-Android.apk"
-                  className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] text-center flex items-center justify-center gap-1 active:scale-95 transition-all shadow-md shadow-emerald-500/20"
-                >
-                  <Icon name="android" size={14} /> Download .apk
-                </a>
-                <a
-                  href="/downloads/TYMVERA-Android.zip"
-                  download="TYMVERA-Android.zip"
-                  className="py-2 px-2.5 rounded-xl bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-gray-800 dark:text-gray-200 font-bold text-[10px] text-center flex items-center justify-center"
-                  title="Download .zip package"
-                >
-                  .zip
-                </a>
+
+              <div className="flex items-center justify-between text-[11px] text-gray-400 font-mono pt-1">
+                <span>In-app download • Zero redirects</span>
+                <span className="text-emerald-500 font-bold">100% Offline Ready</span>
               </div>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setShowDownloadModal(true)}
-            className="w-full py-2 text-[11px] font-bold text-blue-500 dark:text-blue-400 hover:underline flex items-center justify-center gap-1 pt-1"
-          >
-            <Icon name="info" size={14} /> View Install Instructions & Features
-          </button>
-        </div>
+        )}
 
         {/* ─── GOOGLE SIGN-IN & CLOUD SYNCHRONIZATION CARD ─────────────────── */}
         <div className={`text-[11px] font-mono tracking-[2px] font-bold uppercase ${themeColors.text3} mb-3 ml-2`}>

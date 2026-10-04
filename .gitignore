@@ -9,4 +9,6 @@ sandboxData.json
 android-twa/.gradle/
 android-twa/build/
 android-twa/app/build/
+local.properties
+android-twa/local.properties
 
