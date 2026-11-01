@@ -8,8 +8,8 @@ android {
         minSdk 24
         targetSdk 36
         testInstrumentationRunner 'app.web.tymvera.twa.NotificationSmokeInstrumentation'
-        versionCode 8
-        versionName '3.2.1'
+        versionCode 9
+        versionName '3.2.2'
         resValue 'string', 'appName', 'TYMVERA'
         resValue 'string', 'launcherName', 'TYMVERA'
         resValue 'color', 'backgroundColor', '#f8f9f5'

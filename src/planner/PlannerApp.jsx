@@ -1281,7 +1281,7 @@ function PlanTask({block, overnight=false, onToggle, onEdit, onLog}) {
     <article className={`block-row ${block.completed ? 'is-complete' : ''}`}>
       <button className="completion-button" role="checkbox" aria-checked={!!block.completed} aria-label={`${block.completed ? 'Undo completion of' : 'Complete'} ${block.name}${overnight?' from last night':''}`} onClick={onToggle}>{block.completed && <Icon name="check" size={23}/>}</button>
       <div className="task-details">
-        <button className="block-content" disabled={!onEdit} onClick={onEdit} aria-label={`Edit ${block.name}`}>
+        <button className="block-content" onClick={onToggle} aria-pressed={!!block.completed} aria-label={`${block.completed ? 'Undo completion of task' : 'Fully complete task'} ${block.name}${overnight?' from last night':''}`}>
           <span className="block-name">{block.name}</span>
           <span className="block-meta">{timeLabel(block.start)}{end ? ` – ${timeLabel(end.time)}${overnight?' · started yesterday':end.nextDay?' next day':''}` : ` · ${durationLabel(block.duration)}`} · {WEIGHTS.find(([value])=>value===taskWeight(block))?.[1]} priority</span>
         </button>

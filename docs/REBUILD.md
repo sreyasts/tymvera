@@ -108,3 +108,8 @@ The previous host only checked WebView URL history, while planner pages changed 
 Notifications use a dedicated 128px full-colour image generated from the approved logo master. Existing Android cards receive a one-time silent refresh, retaining their channel, title, body, priority and tap intent. Image URLs and install/favicon revisions move to v5 to avoid stale image caches. Android retains its required monochrome status icon.
 
 Validation: 69 JavaScript tests and nine native JVM tests pass. Browser interaction tests verify editor/time-form/draft dismissal and Presets -> Account -> Progress -> Today ordering. The signed release was installed on the Android 15 emulator; real AndroidX Back dispatch passed on the running app. Both a new notification card and a simulated old card refreshed during upgrade matched the expected current logo exactly after Android's 128px-to-96px scaling (mean channel difference 0). Background exact-alarm delivery was checked in deep idle. Account data was not used by these tests.
+
+
+## 3.2.2: task tap completes instead of editing
+
+Tapping a task's name or schedule toggles full completion, including overnight tasks. Only the pencil opens its editor. Manual-time controls remain separate. Browser regression checks confirmed full planned-time logging and cross-off, persistence after reload, undo by tapping again, and pencil-only editing without completion. All 69 JavaScript tests pass.
