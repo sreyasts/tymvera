@@ -11,7 +11,7 @@ export function dueWebReminders(plan, now = new Date()) {
 }
 export function webNotificationOptions(row) {
   return {body:`${row.start} · ${row.duration} planned minutes. Open your plan to log time.`,
-    icon:'/icon-192.png?v=4',badge:'/notification-badge.png',tag:`tymvera:${row.id}`,
+    icon:'/notification-logo.png?v=5',badge:'/notification-badge.png',tag:`tymvera:${row.id}`,
     renotify:false,data:{date:row.date},actions:[{action:'open',title:'Open plan'}]};
 }
 async function registration() {

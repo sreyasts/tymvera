@@ -49,3 +49,7 @@ console.log('Brand assets generated: web, ICO, PWA, share preview, Android legac
 const vector = await readFile(path.join(androidRes,'drawable/ic_tymvera_monochrome.xml'),'utf8');
 const paths = [...vector.matchAll(/android:pathData="([^"]+)"/g)].map(match=>`<path fill="white" d="${match[1]}"/>`).join('');
 await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 66 66">${paths}</svg>`)).png().toFile(path.join(publicDir,'notification-badge.png'));
+
+// Dedicated notification image avoids stale generic drawable caches after upgrades.
+await raster(128).toFile(path.join(androidRes,'drawable-nodpi/tymvera_notification_logo_v5.png'));
+await raster(192).toFile(path.join(publicDir,'notification-logo.png'));

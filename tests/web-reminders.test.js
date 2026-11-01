@@ -16,7 +16,7 @@ describe('Web reminder projection',()=>{
  });
  it('uses the app logo, monochrome badge, date route and a stable deduplication tag',()=>{
   const row=dueWebReminders(plan(),new Date('2026-11-01T09:00:00'))[0], options=webNotificationOptions(row);
-  expect(options.icon).toContain('icon-192');expect(options.badge).toBe('/notification-badge.png');
+  expect(options.icon).toContain('notification-logo.png?v=5');expect(options.badge).toBe('/notification-badge.png');
   expect(options.data.date).toBe('2026-11-01');expect(options.renotify).toBe(false);
   expect(options.tag).toBe(webNotificationOptions(row).tag);
  });

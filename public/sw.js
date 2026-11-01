@@ -9,18 +9,19 @@
  * - Push & local notification click lifecycle handling
  */
 
-const CACHE_NAME = 'tymvera-v44-core';
-const RUNTIME_CACHE = 'tymvera-v44-runtime';
+const CACHE_NAME = 'tymvera-v45-core';
+const RUNTIME_CACHE = 'tymvera-v45-runtime';
 
 // Critical assets to precache on installation for guaranteed offline execution
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/logo-96.png?v=4',
+  '/logo-96.png?v=5',
   '/favicon-32.png',
   '/icon-192.png',
   '/notification-badge.png',
+  '/notification-logo.png?v=5',
   '/icon-512.png',
   '/icon-maskable-192.png',
   '/icon-maskable-512.png',
@@ -202,7 +203,7 @@ self.addEventListener('notificationclick', event => {
 self.addEventListener('push', event => {
   let data={};try{data=event.data?.json()||{};}catch{data={body:event.data?.text()};}
   event.waitUntil(self.registration.showNotification(data.title||'TYMVERA',{
-    body:data.body||'Open your plan.', icon:'/icon-192.png?v=4',badge:'/notification-badge.png',
+    body:data.body||'Open your plan.', icon:'/icon-192.png?v=5',badge:'/notification-badge.png',
     tag:data.tag||'tymvera-push',renotify:false,data:{date:data.date},actions:[{action:'open',title:'Open plan'}],
   }));
 });

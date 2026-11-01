@@ -26,6 +26,7 @@ import {
 import { storageKey, usePlanner } from "./usePlanner";
 import { parsePlannerBackup } from "./backups";
 import RoutineVersions from "./RoutineVersions";
+import {useAppBack,useBackLayer} from './navigation';
 import {hasNativeHost,nativeRequest} from './native';
 import NativeReminders,{useNativeReminders} from './NativeReminders';
 import {
@@ -71,7 +72,7 @@ function Icon({ name, size = 20 }) {
   );
 }
 function Brand() {
-  return <><img className="brand-logo" src={`${import.meta.env.BASE_URL}logo-96.png?v=4`} width="40" height="40" alt="" aria-hidden="true" /><span className="brand-name">tymvera<span>.</span></span></>;
+  return <><img className="brand-logo" src={`${import.meta.env.BASE_URL}logo-96.png?v=5`} width="40" height="40" alt="" aria-hidden="true" /><span className="brand-name">tymvera<span>.</span></span></>;
 }
 const formatDate = (key, options = { month: "short", day: "numeric" }) =>
   new Date(`${key}T12:00:00`).toLocaleDateString(undefined, options);
@@ -188,6 +189,10 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
   const [progressMetric, setProgressMetric] = useState("completion");
   const [historyLimit, setHistoryLimit] = useState(31);
   const [manageVersions, setManageVersions] = useState(false);
+  const backToPreviousPage=useAppBack({tab,date,manageVersions},previous=>{
+    setTab(previous.tab);setDate(previous.date);setManageVersions(previous.manageVersions);setEditor(null);
+  });
+  useBackLayer(!!editor,()=>setEditor(null));
   const [theme, setTheme] = useState(() => {
     try {
       return localStorage.getItem("tymvera_appearance") || "system";
@@ -969,7 +974,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
                 plan={plan}
                 change={change}
                 date={date}
-                onBack={() => setManageVersions(false)}
+                onBack={() => {if(!backToPreviousPage())setManageVersions(false);}}
                 onApply={(id) => {
                   change((p) => selectDayVersion(p, date, id));
                   setManageVersions(false);
@@ -1260,6 +1265,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
 const durationLabel = minutes => `${Math.floor(minutes / 60) ? `${Math.floor(minutes / 60)}h` : ''}${minutes % 60 ? ` ${minutes % 60}m` : ''}`.trim() || '0m';
 function PlanTask({block, overnight=false, onToggle, onEdit, onLog}) {
   const [open,setOpen]=useState(false);
+  useBackLayer(open,()=>setOpen(false));
   const [hours,setHours]=useState(0),[minutes,setMinutes]=useState(0),[error,setError]=useState('');
   const logged=block.actualMinutes || 0;
   const end=blockEnd(block);

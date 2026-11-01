@@ -24,6 +24,9 @@ public class MainActivity extends AppCompatActivity {
  private WebView web;private FirebaseAuth auth;private ValueCallback<Uri[]> fileResult;private final ExecutorService io=Executors.newSingleThreadExecutor();
  @SuppressLint("SetJavaScriptEnabled") @Override public void onCreate(Bundle state){
   super.onCreate(state);
+  getOnBackPressedDispatcher().addCallback(this,new androidx.activity.OnBackPressedCallback(true){
+   @Override public void handleOnBackPressed(){handlePlannerBack();}
+  });
   if(FirebaseApp.getApps(this).isEmpty())FirebaseApp.initializeApp(this,new FirebaseOptions.Builder().setApiKey("AIzaSyC_fiKeJGed5_A9969n2nIXD2Jxl0LfH2k").setApplicationId("1:376961059569:android:4651fd16adf8a4daa57750").setProjectId("mission-plustwo").build());
   auth=FirebaseAuth.getInstance();ReminderStore.channel(this);
   web=new WebView(this);setContentView(web);WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG);
@@ -70,6 +73,12 @@ public class MainActivity extends AppCompatActivity {
  @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==41&&fileResult!=null){fileResult.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(result,data));fileResult=null;}if(request==43&&result==RESULT_OK&&data!=null&&data.getData()!=null&&exportText!=null){try(OutputStream out=getContentResolver().openOutputStream(data.getData())){if(out!=null)out.write(exportText.getBytes(StandardCharsets.UTF_8));}catch(Exception e){new androidx.appcompat.app.AlertDialog.Builder(this).setMessage("Backup could not be saved. Try again.").setPositiveButton("OK",null).show();}exportText=null;}}
  @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results){super.onRequestPermissionsResult(request,permissions,results);ReminderStore.schedule(this);if(web!=null)web.evaluateJavascript("window.dispatchEvent(new Event('native-resume'))",null);}
  @Override protected void onResume(){super.onResume();ReminderStore.schedule(this);if(web!=null)web.evaluateJavascript("window.dispatchEvent(new Event('native-resume'))",null);}
- @Override public void onBackPressed(){if(web!=null&&web.canGoBack())web.goBack();else super.onBackPressed();}
+ private void handlePlannerBack(){
+  if(web==null){moveTaskToBack(true);return;}
+  web.evaluateJavascript("typeof window.__tymveraHandleBack==='function'&&window.__tymveraHandleBack()",handled->{
+   if(isFinishing()||web==null||"true".equals(handled))return;
+   if(web.canGoBack())web.goBack();else moveTaskToBack(true);
+  });
+ }
  @Override protected void onDestroy(){if(fileResult!=null)fileResult.onReceiveValue(null);if(web!=null){web.removeJavascriptInterface("NativeAndroid");web.destroy();web=null;}io.shutdown();super.onDestroy();}
 }

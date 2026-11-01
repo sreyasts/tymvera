@@ -12,7 +12,25 @@ import java.text.SimpleDateFormat;
 public final class ReminderStore {
  static final String CHANNEL="tymvera_blocks_v3";
  static android.content.SharedPreferences prefs(Context c){return c.getSharedPreferences("native_reminders",0);}
- static void channel(Context c){if(Build.VERSION.SDK_INT>=26){NotificationChannel channel=new NotificationChannel(CHANNEL,"Block reminders",NotificationManager.IMPORTANCE_HIGH);channel.setDescription("Your scheduled blocks and recent missed reminders");channel.enableVibration(true);c.getSystemService(NotificationManager.class).createNotificationChannel(channel);}}
+ static void channel(Context c){if(Build.VERSION.SDK_INT>=26){NotificationChannel channel=new NotificationChannel(CHANNEL,"Block reminders",NotificationManager.IMPORTANCE_HIGH);channel.setDescription("Your scheduled blocks and recent missed reminders");channel.enableVibration(true);c.getSystemService(NotificationManager.class).createNotificationChannel(channel);}refreshBranding(c);}
+ static android.graphics.Bitmap brandLogo(Context c){return android.graphics.BitmapFactory.decodeResource(c.getResources(),R.drawable.tymvera_notification_logo_v5);}
+ static void refreshBranding(Context c){
+  if(prefs(c).getInt("notification_brand",0)>=5)return;
+  try{
+   for(android.service.notification.StatusBarNotification active:c.getSystemService(NotificationManager.class).getActiveNotifications()){
+    Notification old=active.getNotification();android.os.Bundle extras=old.extras==null?new android.os.Bundle():old.extras;String channel=Build.VERSION.SDK_INT>=26?old.getChannelId():CHANNEL;
+    if(channel==null)channel=CHANNEL;
+    NotificationCompat.Builder updated=new NotificationCompat.Builder(c,channel)
+     .setSmallIcon(R.drawable.ic_tymvera_monochrome).setLargeIcon(brandLogo(c)).setColor(android.graphics.Color.rgb(53,107,80)).setSubText("TYMVERA")
+     .setContentTitle(extras.getCharSequence(Notification.EXTRA_TITLE)).setContentText(extras.getCharSequence(Notification.EXTRA_TEXT))
+     .setStyle(new NotificationCompat.BigTextStyle().bigText(extras.getCharSequence(Notification.EXTRA_BIG_TEXT,extras.getCharSequence(Notification.EXTRA_TEXT))))
+     .setContentIntent(old.contentIntent).setWhen(old.when).setAutoCancel((old.flags&Notification.FLAG_AUTO_CANCEL)!=0)
+     .setCategory(old.category).setPriority(old.priority).setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setOnlyAlertOnce(true).setSilent(true);
+    c.getSystemService(NotificationManager.class).notify(active.getTag(),active.getId(),updated.build());
+   }
+   prefs(c).edit().putInt("notification_brand",5).apply();
+  }catch(SecurityException ignored){}
+ }
  static boolean notificationsEnabled(Context c){if(!NotificationManagerCompat.from(c).areNotificationsEnabled())return false;if(Build.VERSION.SDK_INT>=26){NotificationChannel channel=c.getSystemService(NotificationManager.class).getNotificationChannel(CHANNEL);return channel!=null&&channel.getImportance()!=NotificationManager.IMPORTANCE_NONE;}return true;}
  static boolean exact(Context c){return Build.VERSION.SDK_INT<31||c.getSystemService(AlarmManager.class).canScheduleExactAlarms();}
  static PendingIntent alarm(Context c,String id,String name,long time){Intent i=new Intent(c,ReminderReceiver.class).setAction("tymvera.REMIND").setData(Uri.parse("tymvera-alarm:"+Uri.encode(id))).putExtra("name",name).putExtra("id",id).putExtra("time",time);return PendingIntent.getBroadcast(c,0,i,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);}
@@ -43,7 +61,7 @@ public final class ReminderStore {
  static Notification notification(Context c,String title,String body,String date){
   Intent open=new Intent(c,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP).setData(Uri.parse("tymvera-notification:"+date)).putExtra("reminderDate",date);
   PendingIntent click=PendingIntent.getActivity(c,date.hashCode(),open,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
-  return new NotificationCompat.Builder(c,CHANNEL).setSmallIcon(R.drawable.ic_tymvera_monochrome).setLargeIcon(android.graphics.BitmapFactory.decodeResource(c.getResources(),R.drawable.tymvera_icon)).setColor(android.graphics.Color.rgb(53,107,80)).setSubText("TYMVERA").setContentTitle(title).setContentText(body).setStyle(new NotificationCompat.BigTextStyle().bigText(body)).setContentIntent(click).setAutoCancel(true).setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setCategory(NotificationCompat.CATEGORY_REMINDER).setPriority(NotificationCompat.PRIORITY_HIGH).build();
+  return new NotificationCompat.Builder(c,CHANNEL).setSmallIcon(R.drawable.ic_tymvera_monochrome).setLargeIcon(brandLogo(c)).setColor(android.graphics.Color.rgb(53,107,80)).setSubText("TYMVERA").setContentTitle(title).setContentText(body).setStyle(new NotificationCompat.BigTextStyle().bigText(body)).setContentIntent(click).setAutoCancel(true).setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setCategory(NotificationCompat.CATEGORY_REMINDER).setPriority(NotificationCompat.PRIORITY_HIGH).build();
  }
  static void test(Context c){channel(c);if(!notificationsEnabled(c))throw new SecurityException("Notifications are blocked");String date=new SimpleDateFormat("yyyy-MM-dd",Locale.US).format(new Date());NotificationManagerCompat.from(c).notify(923401,notification(c,"TYMVERA · Test reminder","Notifications are working. Android controls the light or dark appearance.",date));}
  static void catchUp(Context c)throws JSONException{

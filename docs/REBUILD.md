@@ -99,3 +99,12 @@ Developer checks include a custom Android instrumentation smoke test (debug test
 
 
 3.2.0 verification: 65 JavaScript tests and nine native JVM tests pass. On the Android 15 emulator, the signed release APK was installed and a custom instrumentation runner verified the notification icon, accent, content intent, recent-miss summary and an actual exact alarm posting while the device was forced into deep idle. The runner leaves reminders disabled on the disposable emulator after the check. Emulator battery/idle overrides were then reset. Web browser tests retrieved both a real scheduled notification and a test notification via the service worker, verified identity assets, and confirmed 150% scoring and a bounded graph at 320–1440px. This does not constitute testing a powered-off phone or every manufacturer's battery restrictions.
+
+
+## 3.2.1: Android Back and notification-card branding
+
+The previous host only checked WebView URL history, while planner pages changed React state. Android Back therefore left the app from nested screens. The host now uses AndroidX OnBackPressedDispatcher and asks the planner to consume Back first. Open time forms, task editors and preset drafts close before page navigation. A bounded route history restores visited tabs, selected dates and the preset page; the original Today root remains available even after long sessions. Only an exhausted root permits the task to move into the background.
+
+Notifications use a dedicated 128px full-colour image generated from the approved logo master. Existing Android cards receive a one-time silent refresh, retaining their channel, title, body, priority and tap intent. Image URLs and install/favicon revisions move to v5 to avoid stale image caches. Android retains its required monochrome status icon.
+
+Validation: 69 JavaScript tests and nine native JVM tests pass. Browser interaction tests verify editor/time-form/draft dismissal and Presets -> Account -> Progress -> Today ordering. The signed release was installed on the Android 15 emulator; real AndroidX Back dispatch passed on the running app. Both a new notification card and a simulated old card refreshed during upgrade matched the expected current logo exactly after Android's 128px-to-96px scaling (mean channel difference 0). Background exact-alarm delivery was checked in deep idle. Account data was not used by these tests.

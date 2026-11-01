@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { blocksForDay, newId, stamp, saveRoutineVersion, WEIGHTS, taskWeight, renameTask, blockEnd } from "./model";
 import { taskNames } from "./progress";
+import {useBackLayer} from './navigation';
 
 export default function RoutineVersions({
   plan,
@@ -12,6 +13,7 @@ export default function RoutineVersions({
   const [draft, setDraft] = useState(null),
     [error, setError] = useState("");
   const names = taskNames(plan);
+  useBackLayer(!!draft,()=>setDraft(null));
   function start(copy) {
     setDraft({
       id: newId(),
