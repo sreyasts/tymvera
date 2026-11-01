@@ -1163,3 +1163,5 @@ summary {
 .time-entry p { margin: 0; }
 .time-entry label { display: grid; gap: 7px; }
 .time-entry input { width: 100%; min-width: 0; }
+
+.performance-space::after { content: ""; position: absolute; left: 0; right: 0; bottom: var(--target-height); border-top: 1px dashed var(--muted); pointer-events: none; opacity: .55; }

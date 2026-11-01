@@ -9,8 +9,8 @@
  * - Push & local notification click lifecycle handling
  */
 
-const CACHE_NAME = 'tymvera-v43-core';
-const RUNTIME_CACHE = 'tymvera-v43-runtime';
+const CACHE_NAME = 'tymvera-v44-core';
+const RUNTIME_CACHE = 'tymvera-v44-runtime';
 
 // Critical assets to precache on installation for guaranteed offline execution
 const PRECACHE_ASSETS = [
@@ -20,6 +20,7 @@ const PRECACHE_ASSETS = [
   '/logo-96.png?v=4',
   '/favicon-32.png',
   '/icon-192.png',
+  '/notification-badge.png',
   '/icon-512.png',
   '/icon-maskable-192.png',
   '/icon-maskable-512.png',
@@ -186,109 +187,25 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Notifications: handle user tapping on scheduled routine / alarm alerts
-self.addEventListener('notificationclick', (event) => {
+// Notifications use the platform template; the app supplies its identity assets.
+self.addEventListener('notificationclick', event => {
   event.notification.close();
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      if (clientList.length > 0) {
-        let client = clientList[0];
-        for (let i = 0; i < clientList.length; i++) {
-          if (clientList[i].focused) {
-            client = clientList[i];
-            break;
-          }
-        }
-        return client.focus();
-      }
-      return self.clients.openWindow('/');
-    })
-  );
+  const date=event.notification.data?.date;
+  const path=/^\d{4}-\d{2}-\d{2}$/.test(date||'') ? '/?date='+date : '/';
+  event.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(async clients=>{
+    const client=clients.find(c=>c.url.startsWith(self.location.origin));
+    if(client){await client.navigate(path);return client.focus();}
+    return self.clients.openWindow(path);
+  }));
 });
-
-// ─── SCHEDULE & NOTIFICATION CACHE IN SERVICE WORKER ────────────────────────
-let cachedSchedule = [];
-let cachedAlarms = {};
-let cachedConfig = {};
-
-function checkBackgroundSchedule() {
-  const now = new Date();
-  const currentTotalMins = now.getHours() * 60 + now.getMinutes();
-
-  if (Array.isArray(cachedSchedule) && cachedSchedule.length > 0) {
-    for (const block of cachedSchedule) {
-      if (!block || !block.start) continue;
-      const [sh, sm] = block.start.split(':').map(Number);
-      const startMins = sh * 60 + (sm || 0);
-      const diff = currentTotalMins - startMins;
-
-      if (diff >= 0 && diff <= 3) {
-        return self.registration.showNotification(`⚡ ${block.name} • Starting Now`, {
-          body: `Scheduled: ${block.start} (${block.duration || 60}m session)`,
-          icon: '/icon-192.png',
-          badge: '/icon-192.png',
-          vibrate: [250, 100, 250, 100, 500],
-          tag: `sw_start_${block.id || block.name}`,
-          renotify: true,
-          data: { url: '/' },
-        });
-      }
-    }
-  }
-  return Promise.resolve();
-}
-
-// Web Push Notifications: Wake up and alert user even if PWA window is closed
-self.addEventListener('push', (event) => {
-  let data = {};
-  if (event.data) {
-    try {
-      data = event.data.json();
-    } catch (e) {
-      data = { title: 'TYMVERA Alert', body: event.data.text() };
-    }
-  }
-
-  const title = data.title || '⚡ TYMVERA Routine Alert';
-  const options = {
-    body: data.body || 'Scheduled routine milestone alert',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
-    vibrate: [250, 100, 250, 100, 500],
-    tag: data.tag || `tymvera_push_${Date.now()}`,
-    renotify: true,
-    requireInteraction: data.requireInteraction || false,
-    silent: false,
-    data: data.data || { url: '/' },
-  };
-
-  event.waitUntil(self.registration.showNotification(title, options));
+// Ready to receive a real push; no closed-tab scheduler/subscription is configured.
+self.addEventListener('push', event => {
+  let data={};try{data=event.data?.json()||{};}catch{data={body:event.data?.text()};}
+  event.waitUntil(self.registration.showNotification(data.title||'TYMVERA',{
+    body:data.body||'Open your plan.', icon:'/icon-192.png?v=4',badge:'/notification-badge.png',
+    tag:data.tag||'tymvera-push',renotify:false,data:{date:data.date},actions:[{action:'open',title:'Open plan'}],
+  }));
 });
-
-// Periodic Background Sync (supported mobile PWA engines)
-self.addEventListener('periodicsync', (event) => {
-  if (event.tag === 'tymvera-schedule-sync') {
-    event.waitUntil(checkBackgroundSchedule());
-  }
-});
-
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'tymvera-background-alert') {
-    event.waitUntil(checkBackgroundSchedule());
-  }
-});
-
-// Message listener for skipWaiting or manual updates
-self.addEventListener('message', (event) => {
-  if (!event.data) return;
-  if (event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  } else if (event.data.type === 'SYNC_SCHEDULE') {
-    cachedSchedule = event.data.blocks || [];
-    cachedAlarms = event.data.alarms || {};
-    cachedConfig = event.data.config || {};
-  } else if (event.data.type === 'TRIGGER_NOTIFICATION') {
-    const { title, options } = event.data;
-    event.waitUntil(self.registration.showNotification(title, options));
-  }
+self.addEventListener('message', event => {
+  if(event.data?.type==='SKIP_WAITING')self.skipWaiting();
 });

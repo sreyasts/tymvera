@@ -260,7 +260,7 @@ export function dayStats(blocks) {
   };
 }
 export function completionFraction(block) {
-  return block.completed ? 1 : Math.min(1, Math.max(0, Number(block.actualMinutes) || 0) / Math.max(1, block.duration));
+  return Math.max(block.completed ? 1 : 0, Math.max(0, Number(block.actualMinutes) || 0) / Math.max(1, block.duration));
 }
 export function recordTaskTime(plan, date, id, minutes) {
   if (!Number.isInteger(minutes) || minutes < 0 || minutes > 1440)

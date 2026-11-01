@@ -4,6 +4,12 @@ import {progressSeries, taskTotals, groupProgress} from '../src/planner/progress
 const row=(id,weight=2,extra={})=>({id,name:id,start:'09:00',duration:120,weight,updatedAt:10,...extra});
 function plan(){return {...emptyPlan(),trackingStart:'2026-11-01',templates:{weekday:{id:'weekday',name:'Weekdays',autoDays:[1,2,3,4,5],blocks:[row('study',4)],updatedAt:10},sat:{id:'sat',name:'Saturday',autoDays:[6],blocks:[row('gym',2)],updatedAt:10},sun:{id:'sun',name:'Sunday',autoDays:[0],blocks:[row('skills',4)],updatedAt:10}}};}
 describe('Weighted automatic day presets',()=>{
+ it('awards extra priority points beyond full completion and preserves bonus in graphs',()=>{
+  let p=plan();p=recordTaskTime(p,'2026-11-02','study',180);
+  expect(dayStats(blocksForDay(p,'2026-11-02'))).toMatchObject({percent:150,doneWeight:6,totalWeight:4,done:1});
+  expect(progressSeries(p,1,'','2026-11-02')[0].percent).toBe(150);
+  expect(groupProgress(progressSeries(p,90,'','2026-11-02')).at(-1).doneWeight).toBe(6);
+ });
  it('records partial hours proportionally, fills planned time, and clears it without changing the preset',()=>{
   let p=plan(); const date='2026-11-02';
   p=recordTaskTime(p,date,'study',90); expect(dayStats(blocksForDay(p,date)).percent).toBe(75); expect(p.days[date].study.completed).toBe(false);

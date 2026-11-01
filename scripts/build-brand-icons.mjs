@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -45,3 +45,7 @@ const text=Buffer.from('<svg width="1200" height="630" xmlns="http://www.w3.org/
 await sharp({create:{width:1200,height:630,channels:4,background:navy}})
   .composite([{input:logo,left:140,top:175},{input:text}]).png().toFile(path.join(publicDir,'og-image.png'));
 console.log('Brand assets generated: web, ICO, PWA, share preview, Android legacy and adaptive icons.');
+
+const vector = await readFile(path.join(androidRes,'drawable/ic_tymvera_monochrome.xml'),'utf8');
+const paths = [...vector.matchAll(/android:pathData="([^"]+)"/g)].map(match=>`<path fill="white" d="${match[1]}"/>`).join('');
+await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 66 66">${paths}</svg>`)).png().toFile(path.join(publicDir,'notification-badge.png'));

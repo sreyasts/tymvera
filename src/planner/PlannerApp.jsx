@@ -177,7 +177,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
   } = usePlanner(user?.uid);
   const nativeReminders = useNativeReminders(plan,user?.uid);
   const [tab, setTab] = useState("today");
-  const [date, setDate] = useState(dateKey());
+  const [date, setDate] = useState(() => {const value=new URLSearchParams(location.search).get("date"); return /^\d{4}-\d{2}-\d{2}$/.test(value || "") ? value : dateKey();});
   const [editor, setEditor] = useState(null);
   const [message, setMessage] = useState(null);
   useEffect(() => {
@@ -447,6 +447,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
   const series = plan ? progressSeries(plan, range, selectedTask, today) : [];
   const dates = series.map((d) => d.date);
   const chartSeries = groupProgress(series);
+  const completionScale = Math.max(100,...chartSeries.map(d=>d.percent));
   const names = plan ? taskNames(plan) : [];
   const totals = plan ? taskTotals(plan, dates) : [];
   const totalDone = series.reduce((sum, d) => sum + d.done, 0),
@@ -624,9 +625,10 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
                       aria-label="Blocks completed"
                       aria-valuenow={stats.percent}
                       aria-valuemin={0}
-                      aria-valuemax={100}
+                      aria-valuemax={Math.max(100,stats.percent)}
+                      aria-valuetext={`${stats.percent}% of weighted plan`}
                     >
-                      <span style={{ width: `${stats.percent}%` }} />
+                      <span style={{ width: `${Math.min(100,stats.percent)}%` }} />
                     </div>
                     <p>
                       {stats.done === stats.total
@@ -819,7 +821,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
                   </h2>
                   <p>
                     {progressMetric === "completion"
-                      ? "Partial time earns the same fraction of a task’s points. Completion uses priority points: Low 1, Medium 2, High 3, Very high 4. Duration does not increase a task’s weight."
+                      ? "Partial time earns the same fraction of a task’s points. Completion uses priority points: Low 1, Medium 2, High 3, Very high 4. Extra time earns extra points above 100%. A full-completion tap gives the task its planned points."
                       : "Completing a block logs its planned minutes. Edit the block to enter the actual time you spent."}
                   </p>
                   <div
@@ -836,12 +838,12 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
                               : `${d.percent}%`
                             : ""}
                         </span>
-                        <div className="bar-space">
+                        <div className={`bar-space ${progressMetric === "completion" ? "performance-space" : ""}`} style={{"--target-height":`${10000/completionScale}%`}}>
                           <div
-                            className={`chart-bar ${d.end === today ? "today" : ""} ${!d.total ? "no-plan" : ""}`}
+                            className={`chart-bar ${d.end === today ? "today" : ""} ${!d.total && !d.minutes ? "no-plan" : ""}`}
                             style={{
-                              height: d.total
-                                ? `${Math.max(2, progressMetric === "time" ? (d.minutes / maxMinutes) * 100 : d.percent)}%`
+                              height: (progressMetric === "time" ? d.minutes > 0 : d.total > 0)
+                                ? `${Math.max(2, progressMetric === "time" ? (d.minutes / maxMinutes) * 100 : (d.percent / completionScale) * 100)}%`
                                 : "3px",
                             }}
                           />
@@ -862,7 +864,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
                         ? "Bars group days by week."
                         : "One bar per day."}{" "}
                     {progressMetric === "completion"
-                      ? "Height = completed ÷ planned blocks."
+                      ? "Height = weighted points earned ÷ planned points. The dotted line marks 100%; extra work rises above it."
                       : "Height = logged minutes."}
                   </p>
                 </section>
@@ -940,7 +942,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
                               </button>
                             </th>
                             <td>
-                              {d.total ? `${d.done} / ${d.total}` : "No plan"}
+                              {d.total ? `${d.done} / ${d.total} · ${d.percent}%` : "No plan"}
                             </td>
                             <td>
                               {d.minutes
@@ -1268,7 +1270,7 @@ function PlanTask({block, overnight=false, onToggle, onEdit, onLog}) {
     if (!Number.isInteger(value) || value<0 || value>1440) {setError('Choose a time between 0 and 24 hours.');return;}
     onLog(value);setOpen(false);setError('');
   }
-  const status=block.completed ? 'Fully completed' : logged ? `${Math.round(completionFraction(block)*100)}% of planned time` : '';
+  const status=completionFraction(block)>1 ? `${Math.round(completionFraction(block)*100)}% of planned time` : block.completed ? 'Fully completed' : logged ? `${Math.round(completionFraction(block)*100)}% of planned time` : '';
   return <div className="block-entry">
     <article className={`block-row ${block.completed ? 'is-complete' : ''}`}>
       <button className="completion-button" role="checkbox" aria-checked={!!block.completed} aria-label={`${block.completed ? 'Undo completion of' : 'Complete'} ${block.name}${overnight?' from last night':''}`} onClick={onToggle}>{block.completed && <Icon name="check" size={23}/>}</button>
@@ -1286,7 +1288,7 @@ function PlanTask({block, overnight=false, onToggle, onEdit, onLog}) {
       <p>How much time did you spend? <span className="fine-print">Planned: {durationLabel(block.duration)}</span></p>
       <div className="form-columns"><label>Hours<input autoFocus type="number" inputMode="numeric" required min="0" max="24" step="1" value={hours} onChange={e=>setHours(e.target.value)}/></label><label>Minutes<input type="number" inputMode="numeric" required min="0" max="59" step="1" value={minutes} onChange={e=>setMinutes(e.target.value)}/></label></div>
       <div className="button-row">{[...new Set([30,60,120].filter(n=>n<block.duration))].map(n=><button type="button" className="secondary compact" key={n} onClick={()=>save(n)}>{durationLabel(n)}</button>)}<button type="button" className="secondary compact" onClick={()=>save(block.duration)}>Full {durationLabel(block.duration)}</button></div>
-      <p className="fine-print">Saving replaces the recorded time. Less than planned earns proportional progress.</p>
+      <p className="fine-print">Saving replaces the recorded time. Time earns proportional progress, including extra credit above 100%.</p>
       {error && <p role="alert" className="error-text">{error}</p>}
       <div className="button-row"><button className="primary compact" type="submit">Save time</button><button type="button" className="text-button" onClick={()=>setOpen(false)}>Cancel</button></div>
     </form>}

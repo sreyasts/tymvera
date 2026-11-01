@@ -85,3 +85,17 @@ Validation: JavaScript unit tests; Android NativePlan JVM tests; browser interac
 Each agenda session offers Log time and Fully completed. The inline time form accepts hours and minutes, common time shortcuts, and the full planned duration. Saved time replaces the session total. Under-target sessions earn `weight * actualMinutes / plannedMinutes`; the fraction is capped at one. Full completion logs the target duration; undo clears the recorded time. Overnight sessions expose these controls on the following morning as well. The full block editor uses the same target comparison when actual minutes change.
 
 Validation: 61 JavaScript tests pass. Browser tests cover six-hour partial recording against an eight-hour target, reload persistence, full-target shortcut, undo, last-night recording, both themes, and widths 320–1440px.
+
+
+## 3.2.0: notifications and extra-work scoring
+
+Recorded time earns proportional priority points without a 100% cap; a full-completion action still logs exactly the planned duration. Graphs normalize to the visible peak and draw a dotted 100% reference line. Exact percentages remain visible in the daily records. The time graph also displays overnight carryover when there is no new task starting that day.
+
+Android uses AlarmManager wakeup alarms, monochrome T icon, brand accent, large app icon, private lock-screen content and Android system notification templates. A channel-level block is reflected in Account. Exact-alarm permission revocation falls back to inexact scheduling. Recent undelivered alarms (up to 12 hours) produce a single review summary on reboot/reopen, except entries superseded by a fresh plan update; duplicates are receipted. Device power-off prevents all delivery; reboot recovery happens after Android permits the receiver to run. Notification tap opens the relevant date. Account includes a test action.
+
+Web reminders run from the open page and display persistent service-worker notifications with the app icon, monochrome badge and date-aware tap action. Account explicitly describes the foreground/background limitation and provides permission and test controls. No closed-tab push sender/subscription/scheduler is configured; the legacy volatile worker schedule cache and misleading periodic-sync hooks were removed. The push event handler remains available for a future real push backend. No paid infrastructure or extra third-party service was enabled.
+
+Developer checks include a custom Android instrumentation smoke test (debug test APK only), native missed-alarm policy tests, real browser scheduled/test notification retrieval, extra-credit chart tests and responsive browser checks. Personal account data is not used by these tests.
+
+
+3.2.0 verification: 65 JavaScript tests and nine native JVM tests pass. On the Android 15 emulator, the signed release APK was installed and a custom instrumentation runner verified the notification icon, accent, content intent, recent-miss summary and an actual exact alarm posting while the device was forced into deep idle. The runner leaves reminders disabled on the disposable emulator after the check. Emulator battery/idle overrides were then reset. Web browser tests retrieved both a real scheduled notification and a test notification via the service worker, verified identity assets, and confirmed 150% scoring and a bounded graph at 320–1440px. This does not constitute testing a powered-off phone or every manufacturer's battery restrictions.

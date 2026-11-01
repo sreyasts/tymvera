@@ -37,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
   });
   web.setWebChromeClient(new WebChromeClient(){@Override public boolean onShowFileChooser(WebView v,ValueCallback<Uri[]> cb,FileChooserParams params){if(fileResult!=null)fileResult.onReceiveValue(null);fileResult=cb;try{startActivityForResult(params.createIntent(),41);return true;}catch(Exception e){fileResult=null;return false;}}});
   web.setDownloadListener((url,agent,disposition,mime,length)->{if(url.startsWith("blob:"))web.evaluateJavascript("fetch("+JSONObject.quote(url)+").then(r=>r.text()).then(text=>NativeAndroid.request('export','export',JSON.stringify({text})))",null);});
-  web.loadUrl("https://appassets.androidplatform.net/assets/index.html");
+  String reminderDate=getIntent().getStringExtra("reminderDate");web.loadUrl("https://appassets.androidplatform.net/assets/index.html"+(reminderDate!=null&&reminderDate.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}")?"?date="+reminderDate:""));
  }
  void reply(String id,Object value,String error){runOnUiThread(()->{if(isFinishing()||web==null)return;try{JSONObject result=new JSONObject().put("ok",error==null);if(error==null)result.put("value",value==null?JSONObject.NULL:value);else result.put("error",error);web.evaluateJavascript("window.__tymveraNativeResult&&window.__tymveraNativeResult("+JSONObject.quote(id)+","+result.toString()+")",null);}catch(Exception ignored){}});}
  private String exportText;
@@ -47,6 +47,7 @@ public class MainActivity extends AppCompatActivity {
     case "signIn":signIn(id);break;
     case "signOut":auth.signOut();ReminderStore.prefs(MainActivity.this).edit().putBoolean("enabled",false).apply();ReminderStore.schedule(MainActivity.this);reply(id,true,null);break;
     case "appearance":boolean dark=data.optBoolean("dark");web.setBackgroundColor(android.graphics.Color.parseColor(dark?"#171c19":"#f8f9f5"));WindowInsetsControllerCompat bars=WindowCompat.getInsetsController(getWindow(),web);bars.setAppearanceLightStatusBars(!dark);bars.setAppearanceLightNavigationBars(!dark);reply(id,true,null);break;
+    case "testReminder":ReminderStore.test(MainActivity.this);reply(id,true,null);break;
     case "status":reply(id,ReminderStore.status(MainActivity.this),null);break;
     case "saveReminders":JSONObject plan=data.getJSONObject("plan");io.execute(()->{ReminderStore.save(MainActivity.this,plan);try{reply(id,ReminderStore.status(MainActivity.this),null);}catch(Exception e){reply(id,null,"Unable to read reminder status");}});break;
     case "enableReminders":ReminderStore.prefs(MainActivity.this).edit().putBoolean("enabled",true).apply();if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},42);ReminderStore.schedule(MainActivity.this);reply(id,ReminderStore.status(MainActivity.this),null);break;
