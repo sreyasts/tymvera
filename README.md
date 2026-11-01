@@ -1,3 +1,13 @@
+## Get TYMVERA
+
+### [Download Android APK — 3.2.0](https://github.com/sreyasts/tymvera/releases/download/v3.2.0-phone-test/TYMVERA-Android-3.2.0.apk)
+
+[Open the web app](https://tymvera.web.app) · [Release notes](https://github.com/sreyasts/tymvera/releases/tag/v3.2.0-phone-test) · [Current app source](https://github.com/sreyasts/tymvera/tree/codex/simplify-daily-planner)
+
+Android 3.2.0 is a **phone-test release**. Install it over your existing TYMVERA app. The current implementation is linked above; the older overview below describes the legacy version.
+
+---
+
 > **Daily planner rebuild:** The active app now uses a simple agenda, one-tap completion, dated repeating routines, readable completion graphs, and account-scoped Google backup. See [current implementation and release checks](docs/REBUILD.md). The older feature/architecture overview below describes the legacy implementation, whose source is retained for reference.
 
 <p align="center">
