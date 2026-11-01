@@ -84,6 +84,8 @@ export async function watchPlan(uid, callback, onError) {
         if (s.id === "meta") {
           plan.migrationComplete = s.data().migrationComplete === true;
           plan.legacyMigrationVersion = s.data().legacyMigrationVersion || 0;
+          plan.resetAt = s.data().resetAt || 0;
+          if (s.data().trackingStart) plan.trackingStart = s.data().trackingStart;
         }
         if (s.id === "routines") plan.routines = s.data().records || {};
         if (s.id === "templates") plan.templates = s.data().records || {};
@@ -110,6 +112,8 @@ export async function readPlan(uid) {
     if (s.id === "meta") {
       plan.migrationComplete = s.data().migrationComplete === true;
       plan.legacyMigrationVersion = s.data().legacyMigrationVersion || 0;
+          plan.resetAt = s.data().resetAt || 0;
+          if (s.data().trackingStart) plan.trackingStart = s.data().trackingStart;
     }
     if (s.id === "routines") plan.routines = s.data().records || {};
     if (s.id === "templates") plan.templates = s.data().records || {};
@@ -169,13 +173,15 @@ export async function pushPlan(uid, plan, previous = emptyPlan()) {
     if (JSON.stringify(records) === JSON.stringify(previousRecords)) continue;
     const ref = doc(db, "users", uid, "planner_v3", key);
     await runTransaction(db, async (transaction) => {
+      const meta = await transaction.get(doc(db, "users", uid, "planner_v3", "meta"));
+      if ((meta.data()?.resetAt || 0) !== (plan.resetAt || 0)) throw new Error("Your account was reset on another device. Reload to receive the new plan.");
       const existing = await transaction.get(ref);
       const merged = mergeRecords(existing.data()?.records || {}, records);
       if (
         !existing.exists() ||
         JSON.stringify(merged) !== JSON.stringify(existing.data().records)
       )
-        transaction.set(ref, { records: merged });
+        transaction.set(ref, { records: merged, ...(plan.resetAt ? {resetAt: plan.resetAt} : {}) });
     });
   }
   // A partially interrupted migration must continue reading the legacy source
@@ -189,6 +195,7 @@ export async function pushPlan(uid, plan, previous = emptyPlan()) {
         (existing.data()?.legacyMigrationVersion || 0) < LEGACY_MIGRATION_VERSION
       )
         transaction.set(meta, {
+          ...(existing.data() || {}),
           migrationComplete: true,
           legacyMigrationVersion: LEGACY_MIGRATION_VERSION,
         });

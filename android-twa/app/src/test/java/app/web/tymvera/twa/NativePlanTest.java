@@ -24,4 +24,7 @@ public class NativePlanTest {
  @Test public void dayRemovalWinsOverWeeklyRoutine()throws Exception{
   JSONObject p=plan();p.getJSONObject("routines").put("study",block("study").put("from",tomorrow()).put("days",new JSONArray("[0,1,2,3,4,5,6]")));p.getJSONObject("days").put(tomorrow(),new JSONObject().put("r-study",block("r-study").put("deleted",true)));assertEquals(6,NativePlan.rows(p).length());
  }
+ @Test public void automaticPresetsScheduleWithoutDayOverrides()throws Exception{
+  JSONObject p=plan();p.getJSONObject("templates").put("automatic",new JSONObject().put("autoDays",new JSONArray("[0,1,2,3,4,5,6]")).put("from",tomorrow()).put("updatedAt",20).put("blocks",new JSONArray().put(block("auto"))));assertEquals(7,NativePlan.rows(p).length());
+ }
 }

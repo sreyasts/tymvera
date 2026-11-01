@@ -1,0 +1,5 @@
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/tymvera_icon_background" />
+    <foreground android:drawable="@drawable/tymvera_icon_foreground" />
+    <monochrome android:drawable="@drawable/tymvera_themed_foreground" />
+</adaptive-icon>

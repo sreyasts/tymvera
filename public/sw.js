@@ -9,14 +9,15 @@
  * - Push & local notification click lifecycle handling
  */
 
-const CACHE_NAME = 'tymvera-v39-core';
-const RUNTIME_CACHE = 'tymvera-v39-runtime';
+const CACHE_NAME = 'tymvera-v42-core';
+const RUNTIME_CACHE = 'tymvera-v42-runtime';
 
 // Critical assets to precache on installation for guaranteed offline execution
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
+  '/logo-96.png?v=4',
   '/favicon-32.png',
   '/icon-192.png',
   '/icon-512.png',

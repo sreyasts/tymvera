@@ -14,5 +14,7 @@
      limitations under the License.
 -->
 <resources>
+    <color name="tymvera_icon_background">#050b15</color>
+    <color name="tymvera_splash_background">#f8f9f5</color>
     <color name="shortcut_background">#F5F5F5</color>
 </resources>

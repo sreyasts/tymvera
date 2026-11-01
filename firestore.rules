@@ -228,8 +228,10 @@ service cloud.firestore {
       allow read: if isOwner(userId);
       allow create, update: if isOwner(userId) && (
         ((entry == 'routines' || entry == 'templates' || entry == 'day_modes' || entry.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}'))
-          && request.resource.data.keys().hasOnly(['records']) && request.resource.data.records is map)
-        || (entry == 'meta' && request.resource.data.keys().hasOnly(['migrationComplete','legacyMigrationVersion'])
+          && request.resource.data.keys().hasOnly(['records','resetAt']) && request.resource.data.records is map
+          && (!exists(/databases/$(database)/documents/users/$(userId)/planner_v3/meta) || !('resetAt' in get(/databases/$(database)/documents/users/$(userId)/planner_v3/meta).data) || request.resource.data.resetAt == get(/databases/$(database)/documents/users/$(userId)/planner_v3/meta).data.resetAt))
+        || (entry == 'meta' && request.resource.data.keys().hasOnly(['migrationComplete','legacyMigrationVersion','resetAt','trackingStart'])
+          && (!exists(/databases/$(database)/documents/users/$(userId)/planner_v3/$(entry)) || !('resetAt' in resource.data) || request.resource.data.resetAt == resource.data.resetAt)
           && request.resource.data.migrationComplete is bool));
       allow delete: if isOwner(userId);
     }

@@ -14,6 +14,7 @@ import {
   TRACKING_START,
   renameTask,
   taskKey,
+  WEIGHTS, taskWeight, blockEnd, automaticTemplate, recordTaskTime, completionFraction,
 } from "./model";
 import {
   authMessage,
@@ -68,6 +69,9 @@ function Icon({ name, size = 20 }) {
       <path d={paths[name] || paths.calendar} />
     </svg>
   );
+}
+function Brand() {
+  return <><img className="brand-logo" src={`${import.meta.env.BASE_URL}logo-96.png?v=4`} width="40" height="40" alt="" aria-hidden="true" /><span className="brand-name">tymvera<span>.</span></span></>;
 }
 const formatDate = (key, options = { month: "short", day: "numeric" }) =>
   new Date(`${key}T12:00:00`).toLocaleDateString(undefined, options);
@@ -143,7 +147,7 @@ export default function PlannerApp() {
     return (
       <main className="boot" aria-busy="true">
         <span className="wordmark">
-          tymvera<span>.</span>
+          <Brand />
         </span>
         <p>Opening your day…</p>
       </main>
@@ -195,7 +199,8 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
   const fileRef = useRef(null);
   const today = dateKey();
   const blocks = plan ? blocksForDay(plan, date) : [];
-  const stats = dayStats(blocks);
+  const stats = {...dayStats(blocks), minutes: plan ? (progressSeries(plan,1,"",date)[0]?.minutes || 0) : 0};
+  const overnight = plan ? blocksForDay(plan,shiftDate(date,-1)).filter(b=>blockEnd(b)?.nextDay) : [];
   const [guestAvailable, setGuestAvailable] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey()));
@@ -245,31 +250,11 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
   function notify(text, undo) {
     setMessage({ text, undo });
   }
-  function toggle(block) {
-    change((p) => {
-      const rows = blocksForDay(p, date);
-      return updateDay(p, date, [
-        ...Object.values(p.days[date] || {}),
-        ...rows.map((b) =>
-          b.id === block.id
-            ? {
-                ...b,
-                completed: !b.completed,
-                actualMinutes: b.completed
-                  ? b.timeSource === "logged"
-                    ? b.actualMinutes
-                    : 0
-                  : b.actualMinutes || b.duration,
-                timeSource:
-                  b.actualMinutes && b.timeSource === "logged"
-                    ? "logged"
-                    : "planned",
-                updatedAt: stamp(),
-              }
-            : b,
-        ),
-      ]);
-    });
+  function logTime(block, minutes, targetDate = date) {
+    change(p=>recordTaskTime(p,targetDate,block.id,minutes));
+  }
+  function toggle(block, targetDate = date) {
+    logTime(block,block.completed ? 0 : block.duration,targetDate);
   }
   function saveBlock(values) {
     const existing = editor?.block;
@@ -290,6 +275,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
                 name: values.name,
                 start: values.start,
                 duration: values.duration,
+                weight: values.weight,
                 days: values.days,
                 from: next.routines[routineId]?.from || date,
                 updatedAt: stamp(),
@@ -306,7 +292,8 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
         name: values.name,
         start: values.start,
         duration: values.duration,
-        completed: existing?.completed || false,
+                weight: values.weight,
+        completed: values.actualMinutes !== null ? values.actualMinutes >= values.duration : existing?.completed || false,
         updatedAt: stamp(),
         deleted: false,
         customized: !values.days.length,
@@ -316,7 +303,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
             ? "logged"
             : existing?.timeSource || "planned",
         dayOnly: existing?.dayOnly || !existing,
-        planVersionId: plan.dayModes?.[date]?.templateId || null,
+        planVersionId: plan.dayModes?.[date]?.templateId || automaticTemplate(plan,date)?.id || null,
         ...(routineId ? { routineId } : {}),
       };
       const rowId = !existing && routineId ? `r-${routineId}` : id;
@@ -400,6 +387,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
             name: b.name,
             start: b.start,
             duration: b.duration,
+            weight: taskWeight(b),
           routineId: null,
             planVersionId: null,
             dayOnly: true,
@@ -474,6 +462,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
       <header className="app-header">
         <a
           className="wordmark"
+          aria-label="TYMVERA — Today"
           href="#"
           onClick={(e) => {
             e.preventDefault();
@@ -481,7 +470,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
             setDate(today);
           }}
         >
-          tymvera<span>.</span>
+          <Brand />
         </a>
         <button className="save-status" onClick={() => setTab("account")}>
           <span
@@ -674,7 +663,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
                           setEditor(null);
                         }}
                       >
-                        <option value="">Usual weekly routine</option>
+                        <option value="">Automatic · {automaticTemplate(plan,date)?.name || "Weekly routine"}</option>
                         {Object.values(plan.templates || {})
                           .filter((t) => !t.deleted)
                           .map((t) => (
@@ -685,6 +674,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
                       </select>
                     </label>
                   )}
+                  {overnight.length > 0 && <section className="overnight-section" aria-label="From last night"><h3>From last night</h3>{overnight.map(block=><PlanTask key={block.id} block={block} overnight onToggle={()=>toggle(block,shiftDate(date,-1))} onLog={minutes=>logTime(block,minutes,shiftDate(date,-1))}/>)}<p className="fine-print">Completion counts toward yesterday. This morning’s minutes appear in today’s logged time.</p></section>}
                   {editor && (
                     <BlockEditor
                       key={editor.block?.id || "new"}
@@ -720,44 +710,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
                     </div>
                   )}
                   <div className="block-list">
-                    {blocks.map((block) => (
-                      <article
-                        className={`block-row ${block.completed ? "is-complete" : ""}`}
-                        key={block.id}
-                      >
-                        <button
-                          className="completion-button"
-                          role="checkbox"
-                          aria-checked={!!block.completed}
-                          aria-label={`${block.completed ? "Undo completion of" : "Complete"} ${block.name}`}
-                          onClick={() => toggle(block)}
-                        >
-                          {block.completed && <Icon name="check" size={23} />}
-                        </button>
-                        <button
-                          className="block-content"
-                          onClick={() => setEditor({ block })}
-                          aria-label={`Edit ${block.name}`}
-                        >
-                          <span className="block-name">{block.name}</span>
-                          <span className="block-meta">
-                            {timeLabel(block.start)}
-                            <span aria-hidden="true">·</span>
-                            {block.duration} min
-                            {block.routineId && (
-                              <Icon name="repeat" size={14} />
-                            )}
-                          </span>
-                        </button>
-                        <button
-                          className="edit-button"
-                          aria-label={`Edit block ${block.name}`}
-                          onClick={() => setEditor({ block })}
-                        >
-                          <Icon name="edit" size={18} />
-                        </button>
-                      </article>
-                    ))}
+                    {blocks.map(block=><PlanTask key={`${date}:${block.id}`} block={block} onToggle={()=>toggle(block)} onEdit={()=>setEditor({block})} onLog={minutes=>logTime(block,minutes)}/>)}
                   </div>
                   {blocks.length > 0 && (
                     <button
@@ -794,7 +747,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
                     <h1>{range === 'recovered' ? 'Recovered history' : 'Your progress'}</h1>
                     <p>
                       {range === "lifetime"
-                        ? `Your lifetime record starts ${formatDate(TRACKING_START, { month: "long", day: "numeric", year: "numeric" })}. Older progress stays in the other periods.`
+                        ? `Your lifetime record starts ${formatDate(plan.trackingStart || TRACKING_START, { month: "long", day: "numeric", year: "numeric" })}. `
                         : range === 'recovered' ? 'Your earlier recorded days, preserved separately from the new lifetime record.' : "Your time, across the things that matter to you."}
                     </p>
                   </div>
@@ -866,7 +819,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
                   </h2>
                   <p>
                     {progressMetric === "completion"
-                      ? "Each block counts equally."
+                      ? "Partial time earns the same fraction of a task’s points. Completion uses priority points: Low 1, Medium 2, High 3, Very high 4. Duration does not increase a task’s weight."
                       : "Completing a block logs its planned minutes. Edit the block to enter the actual time you spent."}
                   </p>
                   <div
@@ -1135,6 +1088,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
                     </>
                   )}
                 </section>
+                <section className="settings-section"><h2>Progress rules</h2><p>Priority points determine completion, independently of task length. Low = 1, Medium = 2, High = 3, Very high = 4.</p><p>Overnight blocks stay on their start date for completion. Logged minutes are divided at midnight in your device’s local time. The next morning’s share appears in that day’s time graph.</p><p>Preset changes apply from today forward. Past dates retain their schedule and weight. Task renames update labels everywhere without losing completed work or minutes.</p></section>
                 <NativeReminders controller={nativeReminders}/>
                 <section className="settings-section">
                   <h2>Appearance</h2>
@@ -1157,16 +1111,15 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
                   </div>
                 </section>
                 <section className="settings-section">
-                  <h2>Routine versions</h2>
+                  <h2>Day presets</h2>
                   <p>
-                    Keep your usual week, class day, half-day class, and other
-                    day plans here.
+                    Weekday, Saturday and Sunday plans switch automatically. Add more presets, assign repeat days, or override just today.
                   </p>
                   <button
                     className="secondary"
                     onClick={() => setManageVersions(true)}
                   >
-                    Manage routine versions
+                    Manage day presets
                   </button>
                 </section>
                 <section className="settings-section">
@@ -1302,6 +1255,43 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
   );
 }
 
+const durationLabel = minutes => `${Math.floor(minutes / 60) ? `${Math.floor(minutes / 60)}h` : ''}${minutes % 60 ? ` ${minutes % 60}m` : ''}`.trim() || '0m';
+function PlanTask({block, overnight=false, onToggle, onEdit, onLog}) {
+  const [open,setOpen]=useState(false);
+  const [hours,setHours]=useState(0),[minutes,setMinutes]=useState(0),[error,setError]=useState('');
+  const logged=block.actualMinutes || 0;
+  const end=blockEnd(block);
+  function begin() {
+    setHours(Math.floor(logged/60)); setMinutes(logged%60); setError(''); setOpen(!open);
+  }
+  function save(value) {
+    if (!Number.isInteger(value) || value<0 || value>1440) {setError('Choose a time between 0 and 24 hours.');return;}
+    onLog(value);setOpen(false);setError('');
+  }
+  const status=block.completed ? 'Fully completed' : logged ? `${Math.round(completionFraction(block)*100)}% of planned time` : '';
+  return <div className="block-entry">
+    <article className={`block-row ${block.completed ? 'is-complete' : ''}`}>
+      <button className="completion-button" role="checkbox" aria-checked={!!block.completed} aria-label={`${block.completed ? 'Undo completion of' : 'Complete'} ${block.name}${overnight?' from last night':''}`} onClick={onToggle}>{block.completed && <Icon name="check" size={23}/>}</button>
+      <div className="task-details">
+        <button className="block-content" disabled={!onEdit} onClick={onEdit} aria-label={`Edit ${block.name}`}>
+          <span className="block-name">{block.name}</span>
+          <span className="block-meta">{timeLabel(block.start)}{end ? ` – ${timeLabel(end.time)}${overnight?' · started yesterday':end.nextDay?' next day':''}` : ` · ${durationLabel(block.duration)}`} · {WEIGHTS.find(([value])=>value===taskWeight(block))?.[1]} priority</span>
+        </button>
+        {status && <p className="task-status">{durationLabel(logged)} / {durationLabel(block.duration)} · {status}</p>}
+        <div className="task-actions"><button className="text-button" aria-label={`Log time for ${block.name}${overnight?' from last night':''}`} aria-expanded={open} onClick={begin}>{logged?'Edit time':'Log time'}</button><button className="text-button" aria-label={`${block.completed?'Undo':'Fully complete'} ${block.name}${overnight?' from last night':''}`} onClick={onToggle}>{block.completed?'Undo':'Fully completed'}</button></div>
+      </div>
+      {onEdit && <button className="edit-button" aria-label={`Edit block ${block.name}`} onClick={onEdit}><Icon name="edit" size={18}/></button>}
+    </article>
+    {open && <form className="time-entry" aria-label={`Time for ${block.name}`} onSubmit={e=>{e.preventDefault();save(Number(hours)*60+Number(minutes));}}>
+      <p>How much time did you spend? <span className="fine-print">Planned: {durationLabel(block.duration)}</span></p>
+      <div className="form-columns"><label>Hours<input autoFocus type="number" inputMode="numeric" required min="0" max="24" step="1" value={hours} onChange={e=>setHours(e.target.value)}/></label><label>Minutes<input type="number" inputMode="numeric" required min="0" max="59" step="1" value={minutes} onChange={e=>setMinutes(e.target.value)}/></label></div>
+      <div className="button-row">{[...new Set([30,60,120].filter(n=>n<block.duration))].map(n=><button type="button" className="secondary compact" key={n} onClick={()=>save(n)}>{durationLabel(n)}</button>)}<button type="button" className="secondary compact" onClick={()=>save(block.duration)}>Full {durationLabel(block.duration)}</button></div>
+      <p className="fine-print">Saving replaces the recorded time. Less than planned earns proportional progress.</p>
+      {error && <p role="alert" className="error-text">{error}</p>}
+      <div className="button-row"><button className="primary compact" type="submit">Save time</button><button type="button" className="text-button" onClick={()=>setOpen(false)}>Cancel</button></div>
+    </form>}
+  </div>;
+}
 function BlockEditor({
   block,
   routine,
@@ -1314,12 +1304,13 @@ function BlockEditor({
   const [name, setName] = useState(block?.name || "");
   const [start, setStart] = useState(block?.start || "");
   const [duration, setDuration] = useState(block?.duration || 30);
+  const [weight, setWeight] = useState(taskWeight(block || {}));
   const [repeat, setRepeat] = useState(!block);
   const [days, setDays] = useState(
     routine?.days || [new Date(date + "T12:00:00").getDay()],
   );
   const [actualMinutes, setActualMinutes] = useState(
-    block?.actualMinutes ?? "",
+    block?.actualMinutes ?? (block?.completed ? block.duration : ""),
   );
   const [error, setError] = useState("");
   const form = useRef(null);
@@ -1341,6 +1332,7 @@ function BlockEditor({
       name: name.trim(),
       start,
       duration: Number(duration),
+      weight,
       days: repeat ? days : [],
       actualMinutes: actualMinutes === "" ? null : Number(actualMinutes),
     });
@@ -1405,6 +1397,8 @@ function BlockEditor({
           />
         </label>
       </div>
+      <label>Priority<select value={weight} onChange={e=>setWeight(Number(e.target.value))}>{WEIGHTS.map(([value,label])=><option key={value} value={value}>{label} · {value} point{value>1 ? "s" : ""}</option>)}</select></label>
+      {start && <p className="fine-print">Ends {timeLabel(blockEnd({start,duration:Number(duration)}).time)}{blockEnd({start,duration:Number(duration)}).nextDay ? " the next day" : ""}. Completion belongs to the start date; logged time is split at midnight.</p>}
       {block && (
         <label>
           Time logged (minutes)

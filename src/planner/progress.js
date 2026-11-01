@@ -5,6 +5,7 @@ import {
   shiftDate,
   taskKey,
   TRACKING_START,
+  minutesOnDate,
 } from "./model";
 
 export const PERIODS = [
@@ -34,15 +35,15 @@ export function progressSeries(
 ) {
   const dates = period === 'recovered'
     ? Object.keys(plan.days).filter(date => date < TRACKING_START && date <= today).sort()
-    : progressDates(period, today);
-  return dates.map((date) => ({
-    date,
-    ...dayStats(
-      blocksForDay(plan, date).filter(
-        (b) => !selectedTask || taskKey(b.name) === selectedTask,
-      ),
-    ),
-  }));
+    : progressDates(period, today).filter(date => date >= (plan.trackingStart || "0000-00-00"));
+  return dates.map(date => {
+    const matches = b => !selectedTask || taskKey(b.name) === selectedTask;
+    const current = blocksForDay(plan, date).filter(matches);
+    const previous = blocksForDay(plan, shiftDate(date, -1)).filter(matches);
+    return {date, ...dayStats(current), minutes:
+      current.reduce((sum,b)=>sum+minutesOnDate(b,date,date),0) +
+      previous.reduce((sum,b)=>sum+minutesOnDate(b,shiftDate(date,-1),date),0)};
+  });
 }
 export function groupProgress(series) {
   if (series.length <= 28)
@@ -65,17 +66,18 @@ export function groupProgress(series) {
       end: day.date,
       done: 0,
       total: 0,
-      minutes: 0,
+      minutes: 0, totalWeight: 0, doneWeight: 0,
     };
     group.end = day.date;
     group.done += day.done;
     group.total += day.total;
     group.minutes += day.minutes;
+    group.totalWeight += day.totalWeight; group.doneWeight += day.doneWeight;
     groups.set(key, group);
   }
   return [...groups.values()].map((g) => ({
     ...g,
-    percent: g.total ? Math.round((g.done / g.total) * 100) : 0,
+    percent: g.totalWeight ? Math.round((g.doneWeight / g.totalWeight) * 100) : 0,
     label: new Date(g.date + "T12:00:00").toLocaleDateString(
       undefined,
       series.length <= 90
@@ -102,14 +104,16 @@ export function taskTotals(plan, dates) {
     for (const b of blocksForDay(plan, date)) {
       const key = taskKey(b.name),
         value = totals.get(key) || { key, name: b.name, minutes: 0, done: 0 };
-      value.minutes += Number.isFinite(b.actualMinutes)
-        ? b.actualMinutes
-        : b.completed
-          ? b.duration
-          : 0;
+      value.minutes += minutesOnDate(b, date, date);
       value.done += b.completed ? 1 : 0;
       totals.set(key, value);
     }
+  for (const date of dates) for (const b of blocksForDay(plan, shiftDate(date,-1))) {
+    const minutes = minutesOnDate(b,shiftDate(date,-1),date);
+    if (!minutes) continue;
+    const key=taskKey(b.name), value=totals.get(key)||{key,name:b.name,minutes:0,done:0};
+    value.minutes+=minutes; totals.set(key,value);
+  }
   return [...totals.values()].sort(
     (a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name),
   );

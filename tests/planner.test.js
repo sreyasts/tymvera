@@ -66,11 +66,11 @@ describe("Planner records and progress", () => {
     expect(blocksForDay(p, tomorrow)).toHaveLength(0);
     expect(blocksForDay(p, today)).toHaveLength(1);
   });
-  it("counts completed blocks equally and never labels no-plan as success", () => {
-    expect(dayStats([])).toEqual({ total: 0, done: 0, percent: 0, minutes: 0 });
+  it("uses equal default weights and never labels no-plan as success", () => {
+    expect(dayStats([])).toEqual({ total: 0, done: 0, percent: 0, minutes: 0, totalWeight: 0, doneWeight: 0 });
     expect(
       dayStats([block({ completed: true }), block({ id: "b", duration: 90 })]),
-    ).toEqual({ total: 2, done: 1, percent: 50, minutes: 30 });
+    ).toEqual({ total: 2, done: 1, percent: 50, minutes: 30, totalWeight: 4, doneWeight: 2 });
   });
   it("preserves a newer undo when older completed data arrives", () => {
     const a = updateDay(emptyPlan(), dateKey(), [

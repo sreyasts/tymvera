@@ -37,7 +37,7 @@ public final class ReminderStore {
   if(System.currentTimeMillis()-intent.getLongExtra("time",0)>30*60*1000L)return;
   Intent open=new Intent(c,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);
   PendingIntent click=PendingIntent.getActivity(c,0,open,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
-  try{NotificationManagerCompat.from(c).notify(id.hashCode(),new NotificationCompat.Builder(c,CHANNEL).setSmallIcon(android.R.drawable.ic_popup_reminder).setContentTitle(intent.getStringExtra("name")).setContentText("Your planned block starts now.").setContentIntent(click).setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH).build());prefs(c).edit().putBoolean("done:"+id,true).apply();}catch(SecurityException ignored){}
+  try{NotificationManagerCompat.from(c).notify(id.hashCode(),new NotificationCompat.Builder(c,CHANNEL).setSmallIcon(R.drawable.ic_tymvera_monochrome).setContentTitle(intent.getStringExtra("name")).setContentText("Your planned block starts now.").setContentIntent(click).setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH).build());prefs(c).edit().putBoolean("done:"+id,true).apply();}catch(SecurityException ignored){}
  }
  static JSONObject status(Context c)throws JSONException{return new JSONObject().put("enabled",prefs(c).getBoolean("enabled",false)).put("notificationsGranted",NotificationManagerCompat.from(c).areNotificationsEnabled()).put("exactAlarmAllowed",exact(c)).put("updatedAt",prefs(c).getLong("updated",0)).put("scheduled",new JSONArray(prefs(c).getString("scheduled","[]")).length());}
 }

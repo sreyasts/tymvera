@@ -14,6 +14,12 @@ final class NativePlan {
    String date=format.format(calendar.getTime());int weekday=calendar.get(Calendar.DAY_OF_WEEK)-1;
    JSONObject recorded=object(days,date),mode=object(modes,date);Map<String,JSONObject> visible=new LinkedHashMap<>();
    String templateId=mode.optString("templateId","");JSONObject template=object(templates,templateId);
+   if(templateId.isEmpty()||"null".equals(templateId)){
+    long latest=-1;
+    for(Iterator<String> keys=templates.keys();keys.hasNext();){String key=keys.next();JSONObject candidate=templates.getJSONObject(key);JSONArray auto=candidate.optJSONArray("autoDays");boolean matches=false;if(auto!=null)for(int j=0;j<auto.length();j++)if(auto.getInt(j)==weekday)matches=true;
+     if(matches&&!candidate.optBoolean("deleted")&&date.compareTo(candidate.optString("from","0000-00-00"))>=0&&candidate.optLong("updatedAt")>latest){latest=candidate.optLong("updatedAt");templateId=key;template=candidate;}
+    }
+   }
    if(!templateId.isEmpty()&&!"null".equals(templateId)){
     JSONArray definitions=mode.optJSONArray("blocks");if(definitions==null)definitions=template.optJSONArray("blocks");
     if(definitions!=null)for(int i=0;i<definitions.length();i++){JSONObject b=definitions.getJSONObject(i),old=recorded.optJSONObject(b.getString("id"));if(old!=null&&old.optBoolean("deleted"))continue;visible.put(b.getString("id"),old!=null&&(old.optBoolean("completed")||(old.optBoolean("customized")&&templateId.equals(old.optString("planVersionId"))))?old:b);}

@@ -156,7 +156,12 @@ describe("Cloud isolation and conflict handling", () => {
     const after = updateDay(before, day, [block("new", 2)]);
     await pushPlan("alice", after, { ...before, migrationComplete: true, legacyMigrationVersion:3 });
     expect(mock.writes).toEqual([`users/alice/planner_v3/${day}`]);
-    expect(mock.reads).toBe(1);
+    expect(mock.reads).toBe(2);
+  });
+  it('rejects stale writes after an account reset', async()=>{
+    mock.records.set('users/alice/planner_v3/meta',{resetAt:99,migrationComplete:true,legacyMigrationVersion:3});
+    await expect(pushPlan('alice',updateDay(emptyPlan(),day,[block('old',100)]))).rejects.toThrow('reset');
+    expect(mock.writes).toEqual([]);
   });
   it("rejects unsupported embedded Google login with a recovery instruction", async () => {
     window.NativeAndroid = {};

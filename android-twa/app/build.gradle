@@ -7,8 +7,8 @@ android {
         applicationId 'app.web.tymvera.twa'
         minSdk 24
         targetSdk 36
-        versionCode 4
-        versionName '3.0.1'
+        versionCode 6
+        versionName '3.1.0'
         resValue 'string', 'appName', 'TYMVERA'
         resValue 'string', 'launcherName', 'TYMVERA'
         resValue 'color', 'backgroundColor', '#f8f9f5'
@@ -54,5 +54,5 @@ dependencies {
     testImplementation 'org.json:json:20240303'
 }
 
-tasks.register('copyPlannerAssets', Copy) { from '../../dist'; into 'build/planner-assets' }
+tasks.register('copyPlannerAssets', Sync) { from '../../dist'; into 'build/planner-assets' }
 preBuild.dependsOn copyPlannerAssets

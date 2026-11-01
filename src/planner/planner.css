@@ -139,12 +139,18 @@ strong {
   gap: 16px;
 }
 .wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
   font-size: 26px;
   letter-spacing: -0.04em;
   font-weight: 800;
   color: var(--ink);
   text-decoration: none;
 }
+.wordmark .brand-name { color: var(--ink); }
+.brand-logo { width: 40px; height: 40px; flex: none; display: block; }
 .wordmark span {
   color: var(--accent);
 }
@@ -890,7 +896,9 @@ legend {
   }
   .wordmark {
     font-size: 23px;
+    gap: 8px;
   }
+  .brand-logo { width: 36px; height: 36px; }
   .save-status {
     font-size: 10px;
     max-width: 60%;
@@ -1142,3 +1150,16 @@ summary {
   align-items: center;
   color: var(--accent);
 }
+
+.block-entry { border-bottom: 1px solid var(--line); }
+.block-entry .block-row { border-bottom: 0; align-items: flex-start; padding: 12px 0; }
+.task-details { flex: 1; min-width: 0; }
+.task-details .block-content { width: 100%; padding: 4px 0; }
+.task-details .block-content:disabled { opacity: 1; cursor: default; }
+.task-actions { display: flex; flex-wrap: wrap; gap: 4px 20px; }
+.task-actions button { min-height: 44px; }
+.task-status { margin: 6px 0 0; color: var(--accent); font-size: 12px; line-height: 1.6; }
+.time-entry { display: grid; gap: 14px; padding: 16px; margin: 0 0 16px; background: var(--tint); border-radius: 12px; }
+.time-entry p { margin: 0; }
+.time-entry label { display: grid; gap: 7px; }
+.time-entry input { width: 100%; min-width: 0; }

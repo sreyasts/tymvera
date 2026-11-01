@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { blocksForDay, newId, stamp, saveRoutineVersion } from "./model";
+import { blocksForDay, newId, stamp, saveRoutineVersion, WEIGHTS, taskWeight, renameTask, blockEnd } from "./model";
 import { taskNames } from "./progress";
 
 export default function RoutineVersions({
@@ -16,12 +16,14 @@ export default function RoutineVersions({
     setDraft({
       id: newId(),
       name: "",
+      autoDays: [],
       blocks: copy
         ? blocksForDay(plan, date).map((b) => ({
             id: b.id,
             name: b.name,
             start: b.start,
             duration: b.duration,
+            weight: taskWeight(b),
             updatedAt: stamp(),
           }))
         : [],
@@ -47,7 +49,19 @@ export default function RoutineVersions({
       })),
       updatedAt: stamp(),
     };
-    change((p) => saveRoutineVersion(p, record));
+    change((p) => {
+      let next=p;
+      const old=p.templates?.[record.id];
+      let saved=record;
+      for (const b of record.blocks) {
+        const previous=old?.blocks.find(row=>row.id===b.id);
+        if (previous && previous.name !== b.name) {
+          next=renameTask(next,previous.name,b.name);
+          saved={...saved,blocks:saved.blocks.map(row=>row.name.trim().toLowerCase()===previous.name.trim().toLowerCase()?{...row,name:b.name}:row)};
+        }
+      }
+      return saveRoutineVersion(next,saved);
+    });
     setDraft(null);
   }
   function editBlock(id, values) {
@@ -63,14 +77,12 @@ export default function RoutineVersions({
       </button>
       <div className="page-heading">
         <div>
-          <h1>Routine versions</h1>
-          <p>Your usual week, with room for class days and changes.</p>
+          <h1>Day presets</h1>
+          <p>Automatic days, with room for real life.</p>
         </div>
       </div>
       <p className="fine-print">
-        Your weekly blocks repeat automatically. Save alternative day plans
-        here, then switch today’s plan with its small selector. Switching keeps
-        completed work.
+        Assign days to each preset for automatic switching at midnight. The most recently saved preset wins if days overlap. Today’s selector overrides one date only; tomorrow returns to automatic. Completed work stays recorded.
       </p>
       {!draft && (
         <>
@@ -89,7 +101,7 @@ export default function RoutineVersions({
                 <section className="settings-section" key={t.id}>
                   <h2>{t.name}</h2>
                   <p>
-                    {t.blocks.length} blocks ·{" "}
+                    {(t.autoDays || []).map(d=>["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d]).join(", ") || "Manual only"} · {t.blocks.length} blocks ·{" "}
                     {t.blocks.reduce((sum, b) => sum + b.duration, 0)} planned
                     minutes
                   </p>
@@ -112,13 +124,7 @@ export default function RoutineVersions({
                     <button
                       className="danger-text"
                       onClick={() =>
-                        change((p) => ({
-                          ...p,
-                          templates: {
-                            ...p.templates,
-                            [t.id]: { ...t, deleted: true, updatedAt: stamp() },
-                          },
-                        }))
+                        change((p) => saveRoutineVersion(p,{...t,deleted:true,autoDays:[],updatedAt:stamp()}))
                       }
                     >
                       Archive version
@@ -141,6 +147,7 @@ export default function RoutineVersions({
               placeholder="Class day, half-day class…"
             />
           </label>
+          <fieldset><legend>Use automatically on</legend><div className="repeat-days">{["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((day,i)=><button key={day} type="button" aria-pressed={(draft.autoDays||[]).includes(i)} className={(draft.autoDays||[]).includes(i)?"active":""} onClick={()=>setDraft({...draft,autoDays:(draft.autoDays||[]).includes(i)?draft.autoDays.filter(d=>d!==i):[...(draft.autoDays||[]),i]})}>{day}</button>)}</div><p className="fine-print">Leave all days off for a manual preset. Past schedules and progress stay intact.</p></fieldset>
           {draft.blocks.map((b, i) => (
             <div className="version-block" key={b.id}>
               <label>
@@ -176,6 +183,8 @@ export default function RoutineVersions({
                   />
                 </label>
               </div>
+              <label>Priority<select value={taskWeight(b)} onChange={e=>editBlock(b.id,{weight:Number(e.target.value)})}>{WEIGHTS.map(([value,label])=><option key={value} value={value}>{label} · {value} point{value>1?"s":""}</option>)}</select></label>
+              {b.start && <p className="fine-print">Ends {blockEnd(b).time}{blockEnd(b).nextDay ? " next day" : ""}.</p>}
               <button
                 className="danger-text"
                 type="button"
@@ -209,6 +218,7 @@ export default function RoutineVersions({
                     name: "",
                     start: "",
                     duration: 30,
+                    weight: 2,
                     updatedAt: stamp(),
                   },
                 ],

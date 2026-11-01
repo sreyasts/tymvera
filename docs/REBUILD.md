@@ -65,3 +65,23 @@ Migration version 3 reads the predecessor `focusos_users/<uid>` document as well
 Renaming a task from its block editor updates matching task names across historical records, routines and their dated versions, saved plans, and assigned-day snapshots. It preserves IDs, minutes, completion flags, dates, and scheduling fields. Capitalization follows the entered label. The recovered-history view includes all recorded dates before the tracking baseline rather than a moving one-year window. Progress defaults to 90 days; Lifetime retains its original baseline.
 
 52 JavaScript tests pass. A browser edit test verified mixed-case renaming with historical minutes and completion unchanged. The restored weekday plan was checked in the signed-in deployed web app and independently compared with its cloud source. APK 3.0.1 includes these changes; native Google sign-in remains a phone-test item.
+
+
+## 3.1.0: automatic presets and weighted progress
+
+Day presets have optional automatic weekdays, with a date-only override in Today. Preset revisions preserve historical schedule definitions and weights. Renaming a task relabels matching history without changing completed records or minutes. Priority points are Low 1 / Medium 2 / High 3 / Very high 4, independent of duration. Graph aggregation sums earned and available points before calculating percentages.
+
+Overnight sessions belong to their start date for completion. Recorded minutes split at midnight; task totals use the same split as the time graph. Today includes last night's sessions for completion without date navigation.
+
+Account reset metadata carries an epoch and tracking start. Merging different epochs discards the older plan; cloud transactions and security rules reject stale-epoch uploads. The requested personal-account reset and preset setup were applied by a private, preconditioned administrative commit. No account data, backups, credentials, or personal schedules are bundled into the release.
+
+The existing logo is cleaned and included across the web header/loading view, favicons, PWA/iOS install icons, share card, Android launcher/adaptive/themed icons, splash screen and notification glyph. Asset generation is documented in `assets/brand/README.md`.
+
+Validation: JavaScript unit tests; Android NativePlan JVM tests; browser interaction checks of weighted completion, day overrides, editable priorities/presets, light/dark mode and widths 320–1440px; independent server reads after account reset. Native Google sign-in still requires a successful phone test before claiming end-to-end native account verification.
+
+
+### Quick actual-time logging
+
+Each agenda session offers Log time and Fully completed. The inline time form accepts hours and minutes, common time shortcuts, and the full planned duration. Saved time replaces the session total. Under-target sessions earn `weight * actualMinutes / plannedMinutes`; the fraction is capped at one. Full completion logs the target duration; undo clears the recorded time. Overnight sessions expose these controls on the following morning as well. The full block editor uses the same target comparison when actual minutes change.
+
+Validation: 60 JavaScript tests pass. Browser tests cover six-hour partial recording against an eight-hour target, reload persistence, full-target shortcut, undo, last-night recording, both themes, and widths 320–1440px.
