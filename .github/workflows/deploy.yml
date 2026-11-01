@@ -3,8 +3,11 @@ name: Deploy TYMVERA to Firebase Hosting
 on:
   push:
     branches:
-      - master
-      - main
+      - codex/simplify-daily-planner
+    paths-ignore:
+      - README.md
+      - docs/**
+  workflow_dispatch:
 
 jobs:
   build_and_deploy:
@@ -12,6 +15,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          ref: codex/simplify-daily-planner
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -30,6 +35,6 @@ jobs:
 
       - name: Deploy to Firebase Hosting
         run: |
-          npx -y firebase-tools@latest deploy --only hosting --project mission-plustwo --token "${{ secrets.FIREBASE_TOKEN }}"
+          npx -y firebase-tools@latest deploy --only hosting:tymvera --project mission-plustwo --token "${{ secrets.FIREBASE_TOKEN }}"
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
