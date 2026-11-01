@@ -164,13 +164,13 @@ export function blocksForDay(plan, date) {
       const existing = records[definition.id];
       if (existing?.deleted) continue;
       visible[definition.id] =
-        existing?.completed ||
+        (existing?.completed || existing?.actualMinutes > 0) ||
         (existing?.customized && existing.planVersionId === chosenId)
           ? existing
           : { ...definition, completed: false, planVersionId: chosenId };
     }
     for (const r of Object.values(records))
-      if (!r.deleted && (r.completed || r.dayOnly)) visible[r.id] = r;
+      if (!r.deleted && (r.completed || r.actualMinutes > 0 || r.dayOnly)) visible[r.id] = r;
     return Object.values(visible).sort((a, b) =>
       (a.start || "99:99").localeCompare(b.start || "99:99"),
     );
@@ -203,6 +203,7 @@ export function blocksForDay(plan, date) {
       existing?.deleted ||
       existing?.customized ||
       existing?.completed ||
+      existing?.actualMinutes > 0 ||
       (existing && date <= dateKey())
     )
       continue;
@@ -212,7 +213,7 @@ export function blocksForDay(plan, date) {
     } else if (existing) delete records[id];
   }
   return Object.values(records)
-    .filter((r) => !r.deleted && (!r.planVersionId || r.completed || r.dayOnly))
+    .filter((r) => !r.deleted && (!r.planVersionId || r.completed || r.actualMinutes > 0 || r.dayOnly))
     .sort(
       (a, b) =>
         (a.start || "99:99").localeCompare(b.start || "99:99") ||

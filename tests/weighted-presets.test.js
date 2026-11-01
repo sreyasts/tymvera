@@ -18,6 +18,10 @@ describe('Weighted automatic day presets',()=>{
   let p=plan(); p.days['2026-11-07']={gym:row('gym',2,{completed:true})}; p=selectDayVersion(p,'2026-11-07','weekday');
   expect(blocksForDay(p,'2026-11-07').map(b=>b.name).sort()).toEqual(['gym','study']); expect(blocksForDay(p,'2026-11-08')[0].name).toBe('skills');
  });
+ it('keeps partially logged work when switching presets',()=>{
+  let p=plan();p=recordTaskTime(p,'2026-11-07','gym',30);p=selectDayVersion(p,'2026-11-07','weekday');
+  expect(blocksForDay(p,'2026-11-07').find(b=>b.id==='gym')).toMatchObject({actualMinutes:30,completed:false});
+ });
  it('weights by importance rather than long duration and aggregates charts consistently',()=>{
   const stats=dayStats([row('Study',4,{completed:true}),row('Rest',1,{duration:480})]); expect(stats.percent).toBe(80);
   const grouped=groupProgress(Array.from({length:35},(_,i)=>({date:`2026-11-${String((i%28)+1).padStart(2,'0')}`,done:1,total:2,minutes:120,totalWeight:5,doneWeight:4})));

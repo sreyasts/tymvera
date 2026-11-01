@@ -84,4 +84,4 @@ Validation: JavaScript unit tests; Android NativePlan JVM tests; browser interac
 
 Each agenda session offers Log time and Fully completed. The inline time form accepts hours and minutes, common time shortcuts, and the full planned duration. Saved time replaces the session total. Under-target sessions earn `weight * actualMinutes / plannedMinutes`; the fraction is capped at one. Full completion logs the target duration; undo clears the recorded time. Overnight sessions expose these controls on the following morning as well. The full block editor uses the same target comparison when actual minutes change.
 
-Validation: 60 JavaScript tests pass. Browser tests cover six-hour partial recording against an eight-hour target, reload persistence, full-target shortcut, undo, last-night recording, both themes, and widths 320–1440px.
+Validation: 61 JavaScript tests pass. Browser tests cover six-hour partial recording against an eight-hour target, reload persistence, full-target shortcut, undo, last-night recording, both themes, and widths 320–1440px.
