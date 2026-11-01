@@ -2,7 +2,7 @@
   "short_name": "TYMVERA",
   "name": "TYMVERA",
   "id": "/",
-  "description": "Ultra-fast, distraction-free productivity OS & routine tracker with weighted priorities, multi-session analytics, and offline-first cloud sync.",
+  "description": "Plan your day, complete your blocks, and see your progress. Optional Google backup keeps your plan with you.",
   "categories": ["productivity", "education", "utilities"],
   "icons": [
     {
@@ -31,8 +31,8 @@
     }
   ],
   "start_url": "/",
-  "background_color": "#080808",
-  "theme_color": "#080808",
+  "background_color": "#f8f9f5",
+  "theme_color": "#f8f9f5",
   "display": "standalone",
   "orientation": "portrait"
 }

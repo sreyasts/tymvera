@@ -5,7 +5,8 @@
       "namespace": "android_app",
       "package_name": "app.web.tymvera.twa",
       "sha256_cert_fingerprints": [
-        "B4:39:B1:F6:16:6C:B3:26:E4:A5:71:8A:4B:A8:A9:07:1B:58:CD:6F:D6:0C:E6:C3:ED:74:91:05:5F:8F:FE:21"
+        "B4:39:B1:F6:16:6C:B3:26:E4:A5:71:8A:4B:A8:A9:07:1B:58:CD:6F:D6:0C:E6:C3:ED:74:91:05:5F:8F:FE:21",
+        "B9:4F:29:9F:F8:B1:0C:FB:4D:37:18:8C:CE:08:3B:6E:D7:50:22:7B:E8:24:E6:1B:B2:D3:79:90:5B:CB:6E:FA"
       ]
     }
   }

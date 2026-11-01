@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>TYMVERA</title>
   
   <!-- Primary Meta Tags -->
   <meta name="title" content="TYMVERA" />
-  <meta name="description" content="Distraction-free daily routine planner, weighted priority scheduler, and multi-session analytics for students and focused learners. 100% offline-first PWA." />
+  <meta name="description" content="Plan your day, complete your blocks, and see your progress. A simple daily planner with optional Google backup." />
   <meta name="keywords" content="tymvera, productivity, study planner, routine tracker, habit tracker, time blocking, offline first pwa, pomodoro, task priorities" />
   <meta name="author" content="Sreyas T S" />
   <meta name="robots" content="index, follow" />
@@ -17,7 +17,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://tymvera.web.app/" />
   <meta property="og:title" content="TYMVERA" />
-  <meta property="og:description" content="Track study routines with 4-tier weighted priorities, multi-session analytics, period milestones, and offline cloud sync." />
+  <meta property="og:description" content="A little structure for your day. Plan blocks, mark them complete, and see your progress." />
   <meta property="og:image" content="https://tymvera.web.app/og-image.png" />
   <meta property="og:site_name" content="TYMVERA" />
 
@@ -25,7 +25,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:url" content="https://tymvera.web.app/" />
   <meta name="twitter:title" content="TYMVERA" />
-  <meta name="twitter:description" content="Track study routines with 4-tier weighted priorities, multi-session analytics, period milestones, and offline cloud sync." />
+  <meta name="twitter:description" content="A little structure for your day. Plan blocks, mark them complete, and see your progress." />
   <meta name="twitter:image" content="https://tymvera.web.app/og-image.png" />
 
   <!-- Favicons & Web App Manifest -->
@@ -34,9 +34,9 @@
   <link rel="icon" type="image/png" href="/icon.png" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#080808" />
+  <meta name="theme-color" content="#f8f9f5" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
   <!-- Schema.org JSON-LD Structured Data for Search Engines -->
   <script type="application/ld+json">
@@ -45,7 +45,7 @@
     "@type": "WebApplication",
     "name": "TYMVERA",
     "url": "https://tymvera.web.app/",
-    "description": "Ultra-fast, distraction-free productivity OS & routine tracker with weighted priorities, multi-session analytics, and offline-first cloud sync.",
+    "description": "A simple daily planner with repeating blocks, completion tracking, and Google backup.",
     "applicationCategory": "ProductivityApplication",
     "operatingSystem": "All",
     "offers": {
@@ -53,68 +53,19 @@
       "price": "0",
       "priceCurrency": "USD"
     },
-    "featureList": [
-      "4-Tier Task Priorities & Weighted Scoring",
-      "Zero-XP Routine Exclusions",
-      "Multi-Session Aggregate Graphs",
-      "Period Milestones & Streak Tracking",
-      "Smart Web-Audio Alarms & Notifications",
-      "Universal Local Storage & Firebase Cloud Sync",
-      "100% Offline-First Progressive Web App"
-    ]
+    "featureList": ["Daily plans", "Repeating blocks", "Completion history", "Google account sync", "Offline local storage"]
   }
   </script>
 
-  <!-- Material Symbols: Local Self-Hosted + CDN Fallback -->
-  <link rel="stylesheet" href="/vendor/material-symbols.css" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,600,0,0" />
-
-  <!-- Instant Theme Sync (Prevents Flash of Wrong Theme) -->
   <script>
-    (function() {
-      try {
-        var savedTheme = localStorage.getItem("fo6_theme");
-        var isDark = savedTheme === "dark" || (!savedTheme || savedTheme === "system") && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-        if (isDark) {
-          document.documentElement.classList.add("dark");
-        } else {
-          document.documentElement.classList.remove("dark");
-        }
-      } catch (e) {}
-    })();
+    try {
+      var theme = localStorage.getItem('tymvera_appearance') || 'system';
+      document.documentElement.dataset.theme = theme === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme;
+    } catch (_) {}
   </script>
-
-  <!-- Tailwind CSS: Local Self-Hosted + CDN Fallback with Class Dark Mode -->
-  <script src="/vendor/tailwindcss.js"></script>
-  <script>
-    if (!window.tailwind) {
-      var s = document.createElement('script');
-      s.src = 'https://cdn.tailwindcss.com';
-      document.head.appendChild(s);
-    }
-  </script>
-  <script>
-    (function configureTailwind() {
-      if (window.tailwind) {
-        window.tailwind.config = {
-          darkMode: 'class',
-          theme: {
-            extend: {
-              colors: {
-                obsidian: '#080808',
-              }
-            }
-          }
-        };
-      } else {
-        setTimeout(configureTailwind, 20);
-      }
-    })();
-  </script>
-
   <!-- PWA Offline Service Worker Registration -->
   <script>
-    if ('serviceWorker' in navigator) {
+    if ('serviceWorker' in navigator && !window.NativeAndroid) {
       window.addEventListener('load', function() {
         navigator.serviceWorker.register('/sw.js', { scope: '/' })
           .then(function(reg) {
@@ -127,7 +78,7 @@
     }
   </script>
 </head>
-<body class="bg-[#f8fafc] dark:bg-[#080808] text-gray-900 dark:text-white m-0 p-0 overflow-x-hidden select-none">
+<body>
   <div id="root"></div>
   <script type="module" src="/src/index.jsx"></script>
 </body>

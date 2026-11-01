@@ -1,186 +1,58 @@
-/*
- * Copyright 2019 Google Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-import groovy.xml.MarkupBuilder
-
-plugins {
-    id 'com.android.application'
-}
-
-def twaManifest = [
-    applicationId: 'app.web.tymvera.twa',
-    hostName: 'tymvera.web.app', // The domain being opened in the TWA.
-    launchUrl: '/', // The start path for the TWA. Must be relative to the domain.
-    name: 'TYMVERA', // The application name.
-    launcherName: 'TYMVERA', // The name shown on the Android Launcher.
-    themeColor: '#080808', // The color used for the status bar.
-    themeColorDark: '#000000', // The color used for the dark status bar.
-    navigationColor: '#000000', // The color used for the navigation bar.
-    navigationColorDark: '#000000', // The color used for the dark navbar.
-    navigationDividerColor: '#000000', // The navbar divider color.
-    navigationDividerColorDark: '#000000', // The dark navbar divider color.
-    backgroundColor: '#080808', // The color used for the splash screen background.
-    enableNotifications: true, // Set to true to enable notification delegation.
-    // Every shortcut must include the following fields:
-    // - name: String that will show up in the shortcut.
-    // - short_name: Shorter string used if |name| is too long.
-    // - url: Absolute path of the URL to launch the app with (e.g '/create').
-    // - icon: Name of the resource in the drawable folder to use as an icon.
-    shortcuts: [],
-    // The duration of fade out animation in milliseconds to be played when removing splash screen.
-    splashScreenFadeOutDuration: 300,
-    generatorApp: 'bubblewrap-cli', // Application that generated the Android Project
-    // The fallback strategy for when Trusted Web Activity is not available. Possible values are
-    // 'customtabs' and 'webview'.
-    fallbackType: 'customtabs',
-    enableSiteSettingsShortcut: 'true',
-    orientation: 'portrait',
-]
+plugins { id 'com.android.application' }
 
 android {
-    compileSdkVersion 36
-    namespace "app.web.tymvera.twa"
+    namespace 'app.web.tymvera.twa'
+    compileSdk 36
     defaultConfig {
-        applicationId "app.web.tymvera.twa"
-        minSdkVersion 23
-        targetSdkVersion 36
-        versionCode 2
-        versionName "2"
-
-        // The name for the application
-        resValue "string", "appName", twaManifest.name
-
-        // The name for the application on the Android Launcher
-        resValue "string", "launcherName", twaManifest.launcherName
-
-        // The URL that will be used when launching the TWA from the Android Launcher
-        def launchUrl = "https://" + twaManifest.hostName + twaManifest.launchUrl
-        resValue "string", "launchUrl", launchUrl
-
-        
-
-        
-            // The URL the Web Manifest for the Progressive Web App that the TWA points to. This
-            // is used by Chrome OS and Meta Quest to open the Web version of the PWA instead of
-            // the TWA, as it will probably give a better user experience for non-mobile devices.
-            resValue "string", "webManifestUrl", 'https://tymvera.web.app/manifest.json'
-        
-
-        
-            // This is used by Meta Quest.
-            resValue "string", "fullScopeUrl", 'https://tymvera.web.app/'
-        
-
-        
-
-        // The hostname is used when building the intent-filter, so the TWA is able to
-        // handle Intents to open host url of the application.
-        resValue "string", "hostName", twaManifest.hostName
-
-        // This attribute sets the status bar color for the TWA. It can be either set here or in
-        // `res/values/colors.xml`. Setting in both places is an error and the app will not
-        // compile. If not set, the status bar color defaults to #FFFFFF - white.
-        resValue "color", "colorPrimary", twaManifest.themeColor
-
-        // This attribute sets the dark status bar color for the TWA. It can be either set here or in
-        // `res/values/colors.xml`. Setting in both places is an error and the app will not
-        // compile. If not set, the status bar color defaults to #000000 - white.
-        resValue "color", "colorPrimaryDark", twaManifest.themeColorDark
-
-        // This attribute sets the navigation bar color for the TWA. It can be either set here or
-        // in `res/values/colors.xml`. Setting in both places is an error and the app will not
-        // compile. If not set, the navigation bar color defaults to #FFFFFF - white.
-        resValue "color", "navigationColor", twaManifest.navigationColor
-
-        // This attribute sets the dark navigation bar color for the TWA. It can be either set here
-        // or in `res/values/colors.xml`. Setting in both places is an error and the app will not
-        // compile. If not set, the navigation bar color defaults to #000000 - black.
-        resValue "color", "navigationColorDark", twaManifest.navigationColorDark
-
-        // This attribute sets the navbar divider color for the TWA. It can be either 
-        // set here or in `res/values/colors.xml`. Setting in both places is an error and the app 
-        // will not compile. If not set, the divider color defaults to #00000000 - transparent.
-        resValue "color", "navigationDividerColor", twaManifest.navigationDividerColor
-
-        // This attribute sets the dark navbar divider color for the TWA. It can be either 
-        // set here or in `res/values/colors.xml`. Setting in both places is an error and the 
-        //app will not compile. If not set, the divider color defaults to #000000 - black.
-        resValue "color", "navigationDividerColorDark", twaManifest.navigationDividerColorDark
-
-        // Sets the color for the background used for the splash screen when launching the
-        // Trusted Web Activity.
-        resValue "color", "backgroundColor", twaManifest.backgroundColor
-
-        // Defines a provider authority for the Splash Screen
-        resValue "string", "providerAuthority", twaManifest.applicationId + '.fileprovider'
-
-        // The enableNotification resource is used to enable or disable the
-        // TrustedWebActivityService, by changing the android:enabled and android:exported
-        // attributes
-        resValue "bool", "enableNotification", twaManifest.enableNotifications.toString()
-
-        twaManifest.shortcuts.eachWithIndex { shortcut, index ->
-            resValue "string", "shortcut_name_$index", "$shortcut.name"
-            resValue "string", "shortcut_short_name_$index", "$shortcut.short_name"
-        }
-
-        // The splashScreenFadeOutDuration resource is used to set the duration of fade out animation in milliseconds
-        // to be played when removing splash screen. The default is 0 (no animation).
-        resValue "integer", "splashScreenFadeOutDuration", twaManifest.splashScreenFadeOutDuration.toString()
-
-        resValue "string", "generatorApp", twaManifest.generatorApp
-
-        resValue "string", "fallbackType", twaManifest.fallbackType
-
-        resValue "bool", "enableSiteSettingsShortcut", twaManifest.enableSiteSettingsShortcut
-        resValue "string", "orientation", twaManifest.orientation
+        applicationId 'app.web.tymvera.twa'
+        minSdk 24
+        targetSdk 36
+        versionCode 3
+        versionName '3.0.0'
+        resValue 'string', 'appName', 'TYMVERA'
+        resValue 'string', 'launcherName', 'TYMVERA'
+        resValue 'color', 'backgroundColor', '#f8f9f5'
+        resValue 'color', 'colorPrimary', '#356b50'
+        resValue 'color', 'navigationColor', '#f8f9f5'
+        buildConfigField 'String', 'WEB_ORIGIN', '\"https://tymvera.web.app\"'
     }
-
+    buildFeatures { buildConfig true }
+    sourceSets {
+        main {
+            assets.srcDirs = ['build/planner-assets']
+            java.exclude '**/NativeAndroidBridge.java', '**/AlarmReceiver.java', '**/TYMVERAApplication.java', '**/BrowserActivity.java'
+        }
+    }
     signingConfigs {
         release {
-            storeFile file("release.keystore")
-            storePassword "tymvera123"
-            keyAlias "tymvera"
-            keyPassword "tymvera123"
+            storeFile file(System.getenv('TYMVERA_KEYSTORE') ?: 'release.keystore')
+            storePassword System.getenv('TYMVERA_STORE_PASSWORD')
+            keyAlias System.getenv('TYMVERA_KEY_ALIAS')
+            keyPassword System.getenv('TYMVERA_KEY_PASSWORD')
         }
     }
     buildTypes {
-        release {
-            signingConfig signingConfigs.release
-            minifyEnabled false
-        }
-        debug {
-            signingConfig signingConfigs.release
-            debuggable true
-        }
+        release { signingConfig signingConfigs.release; minifyEnabled false }
+        debug { signingConfig signingConfigs.release; debuggable true }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
-    lintOptions {
-        checkReleaseBuilds false
-        abortOnError false
-    }
 }
 
 dependencies {
-    implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation 'androidx.appcompat:appcompat:1.7.0'
-    implementation 'androidx.core:core:1.13.1'
     implementation 'androidx.webkit:webkit:1.12.1'
     implementation 'com.google.android.material:material:1.12.0'
+    implementation platform('com.google.firebase:firebase-bom:35.1.0')
+    implementation 'com.google.firebase:firebase-auth'
+    implementation 'androidx.credentials:credentials:1.5.0'
+    implementation 'androidx.credentials:credentials-play-services-auth:1.5.0'
+    implementation 'com.google.android.libraries.identity.googleid:googleid:1.1.1'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'
 }
+
+tasks.register('copyPlannerAssets', Copy) { from '../../dist'; into 'build/planner-assets' }
+preBuild.dependsOn copyPlannerAssets

@@ -1,8 +1,5 @@
 <resources>
-    <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
-        <item name="android:windowBackground">@color/backgroundColor</item>
-        <item name="android:statusBarColor">@color/colorPrimary</item>
-        <item name="android:navigationBarColor">@color/navigationColor</item>
-        <item name="android:windowLightStatusBar">false</item>
-    </style>
+ <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar"><item name="colorPrimary">#356b50</item></style>
+ <style name="BrowserTheme" parent="Theme.AppCompat.Light.NoActionBar"><item name="android:windowIsTranslucent">true</item><item name="android:windowBackground">@android:color/transparent</item></style>
+ <string name="asset_statements">[{&quot;relation&quot;:[&quot;delegate_permission/common.handle_all_urls&quot;],&quot;target&quot;:{&quot;namespace&quot;:&quot;web&quot;,&quot;site&quot;:&quot;https://tymvera.web.app&quot;}}]</string>
 </resources>

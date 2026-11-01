@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "376961059569",
+    "firebase_url": "https://mission-plustwo-default-rtdb.firebaseio.com",
+    "project_id": "mission-plustwo",
+    "storage_bucket": "mission-plustwo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:376961059569:android:4651fd16adf8a4daa57750",
+        "android_client_info": {
+          "package_name": "app.web.tymvera.twa"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "376961059569-mbqj8a4j834c5i4imakb3f1mb1pvh9ud.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.web.tymvera.twa",
+            "certificate_hash": "f4d0b3e1fa1b8cdb93c84b77e319482acdd41bde"
+          }
+        },
+        {
+          "client_id": "376961059569-i02u6s80j3inilhg5l3i25ct8lgcn6k2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_fiKeJGed5_A9969n2nIXD2Jxl0LfH2k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "376961059569-i02u6s80j3inilhg5l3i25ct8lgcn6k2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

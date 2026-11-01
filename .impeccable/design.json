@@ -1,0 +1,234 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-31T13:10:46.122282+00:00",
+  "title": "Design System: TYMVERA",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Restrained Green"
+      },
+      "tint": {
+        "role": "primary",
+        "displayName": "Green Wash"
+      },
+      "accent-ink": {
+        "role": "neutral",
+        "displayName": "Accent Contrast"
+      },
+      "bg": {
+        "role": "neutral",
+        "displayName": "Warm Page"
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "White Surface"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Charcoal Ink"
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Quiet Text"
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Soft Divider"
+      },
+      "input": {
+        "role": "neutral",
+        "displayName": "Field Surface"
+      },
+      "dark-bg": {
+        "role": "neutral",
+        "displayName": "Dark Page"
+      },
+      "dark-surface": {
+        "role": "neutral",
+        "displayName": "Dark Surface"
+      },
+      "dark-ink": {
+        "role": "neutral",
+        "displayName": "Light Ink"
+      },
+      "dark-muted": {
+        "role": "neutral",
+        "displayName": "Dark Quiet Text"
+      },
+      "dark-line": {
+        "role": "neutral",
+        "displayName": "Dark Divider"
+      },
+      "dark-accent": {
+        "role": "primary",
+        "displayName": "Soft Green"
+      },
+      "dark-accent-ink": {
+        "role": "neutral",
+        "displayName": "Dark Accent Contrast"
+      },
+      "dark-tint": {
+        "role": "primary",
+        "displayName": "Dark Green Wash"
+      },
+      "dark-input": {
+        "role": "neutral",
+        "displayName": "Dark Field Surface"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Page heading",
+        "purpose": "Main page headings; 32px at max-width 600px."
+      },
+      "headline": {
+        "displayName": "Empty-state heading",
+        "purpose": "Empty agendas; 21px at max-width 600px."
+      },
+      "title": {
+        "displayName": "Section heading",
+        "purpose": "Section headings; Progress h2 reduces to 17px on phones."
+      },
+      "title-small": {
+        "displayName": "Editor heading",
+        "purpose": "Inline editor headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Base text, with smaller supporting descriptions."
+      },
+      "block-title": {
+        "displayName": "Agenda name",
+        "purpose": "Task names; 15px at max-width 600px."
+      },
+      "label": {
+        "displayName": "Field label",
+        "purpose": "Labels above editable fields."
+      }
+    },
+    "shadows": [
+      {
+        "name": "toast-light",
+        "value": "0 8px 28px #172b1e12",
+        "purpose": "Transient toast in light appearance."
+      },
+      {
+        "name": "toast-dark",
+        "value": "0 8px 28px #0004",
+        "purpose": "Transient toast in dark appearance."
+      }
+    ],
+    "motion": [
+      {
+        "name": "completion-track",
+        "value": "width 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Daily completion progress; removed for reduced motion."
+      },
+      {
+        "name": "completion-circle",
+        "value": "background 0.2s, border-color 0.2s",
+        "purpose": "Completion check fill and outline; removed for reduced motion."
+      },
+      {
+        "name": "editor-scroll",
+        "value": "smooth",
+        "purpose": "scrollIntoView on opening the editor; CSS reduced-motion rule sets scroll-behavior:auto."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone-max",
+        "value": "600px"
+      },
+      {
+        "name": "desktop-min",
+        "value": "1000px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main add/save action; solid green with ink hover.",
+      "html": "<button class=\"ds-primary\">Add block</button>",
+      "css": ".ds-primary{font-family:\"Manrope Variable\",sans-serif;font-size:15px;line-height:1.6;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;background:none;color:var(--ink);cursor:pointer;min-height:44px;padding:8px 12px;border-radius:8px;touch-action:manipulation;background:var(--accent);color:var(--accent-ink);font-weight:650;padding:11px 18px;min-height:46px}.ds-primary:hover{background:var(--ink);color:var(--bg)}.ds-primary:focus-visible{outline:2px solid var(--accent);outline-offset:4px;}.ds-primary:disabled{cursor:wait;opacity:.6}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Backup, cancel, and supporting actions.",
+      "html": "<button class=\"ds-secondary\">Export backup</button>",
+      "css": ".ds-secondary{font-family:\"Manrope Variable\",sans-serif;font-size:15px;line-height:1.6;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;background:none;color:var(--ink);cursor:pointer;min-height:44px;padding:8px 12px;border-radius:8px;touch-action:manipulation;border:1px solid var(--line);font-size:13px;font-weight:600;padding:9px 14px}.ds-secondary:hover{background:var(--tint)}.ds-secondary:focus-visible{outline:2px solid var(--accent);outline-offset:4px;}.ds-secondary:disabled{cursor:wait;opacity:.6}"
+    },
+    {
+      "name": "Block Name Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Labeled editable field; accent keyboard focus and red validation copy.",
+      "html": "<label class=\"ds-label\">Block name<input class=\"ds-input\" placeholder=\"Read a chapter, go for a walk…\"/></label>",
+      "css": ".ds-label{display:flex;flex-direction:column;gap:7px;font-family:\"Manrope Variable\",sans-serif;font-size:12px;font-weight:650;line-height:1.6;color:var(--ink)}.ds-input{font-family:inherit;line-height:1.6;border:1px solid var(--line);border-radius:8px;background:var(--input);color:var(--ink);min-height:48px;padding:10px 12px;width:100%;min-width:0;font-size:16px;caret-color:var(--accent)}.ds-input::placeholder{color:var(--muted);font-size:14px}.ds-input:focus-visible{outline:2px solid var(--accent);outline-offset:4px}"
+    },
+    {
+      "name": "Main Navigation",
+      "kind": "nav",
+      "refersTo": "navigation-active",
+      "description": "Today, Progress, Account. Horizontal by default, vertical at desktop, fixed along the bottom on phones in the app.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Main navigation\"><button aria-current=\"page\" class=\"active\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M8 3v4m8-4v4M4 10h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z\"/></svg>Today</button><button><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 4v16h16M8 16v-4m5 4V7m5 9v-6\"/></svg>Progress</button><button><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 21v-2a8 8 0 0 1 16 0v2\"/></svg>Account</button></nav>",
+      "css": ".ds-nav{display:flex;gap:12px;padding:20px 0;background:var(--bg)}.ds-nav button{font-family:\"Manrope Variable\",sans-serif;font-size:15px;line-height:1.6;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;background:none;color:var(--ink);cursor:pointer;min-height:44px;padding:8px 12px;border-radius:8px;touch-action:manipulation;padding:10px 18px;color:var(--muted);font-size:13px;font-weight:650}.ds-nav button:hover{background:var(--tint)}.ds-nav .active{background:var(--tint);color:var(--accent)}.ds-nav button:focus-visible{outline:2px solid var(--accent);outline-offset:4px;}@media(min-width:1000px){.ds-nav{position:absolute;top:140px;flex-direction:column;width:140px}.ds-nav button{justify-content:flex-start}}@media(max-width:600px){.ds-nav{position:fixed;bottom:0;left:0;right:0;border-top:1px solid var(--line);z-index:20;justify-content:space-around;gap:0;padding:8px 12px calc(8px + env(safe-area-inset-bottom))}.ds-nav button{flex:1;flex-direction:column;gap:4px;font-size:10px;padding:8px 12px}.ds-nav .active{background:none;color:var(--accent)}.ds-nav .active svg{stroke-width:2.3}}"
+    },
+    {
+      "name": "Appearance Options",
+      "kind": "custom",
+      "refersTo": "segmented-active",
+      "description": "Shared segmented styling for appearance and progress period controls.",
+      "html": "<div class=\"ds-options\" role=\"group\" aria-label=\"Theme\"><button aria-pressed=\"false\">Light</button><button aria-pressed=\"false\">Dark</button><button class=\"active\" aria-pressed=\"true\">System</button></div>",
+      "css": ".ds-options{display:inline-flex;border:1px solid var(--line);padding:3px;border-radius:10px;gap:3px}.ds-options button{font-family:\"Manrope Variable\",sans-serif;font-size:15px;line-height:1.6;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;background:none;color:var(--ink);cursor:pointer;min-height:44px;padding:8px 12px;border-radius:8px;touch-action:manipulation;font-size:13px;padding:8px 18px;min-height:40px}.ds-options button:hover{background:var(--tint)}.ds-options .active{background:var(--tint);color:var(--accent);font-weight:700}.ds-options button:focus-visible{outline:2px solid var(--accent);outline-offset:4px;}"
+    },
+    {
+      "name": "Completed Agenda Row",
+      "kind": "custom",
+      "description": "Checked circle, struck-through title, metadata, and edit action; source component uses React state for toggling.",
+      "html": "<div class=\"ds-row\"><button class=\"ds-complete\" role=\"checkbox\" aria-checked=\"true\" aria-label=\"Undo completion of Read a chapter\"><svg width=\"23\" height=\"23\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m5 12 4 4L19 6\"/></svg></button><button class=\"ds-content\" aria-label=\"Edit Read a chapter\"><span class=\"ds-name\">Read a chapter</span><span class=\"ds-meta\">Anytime · 30 min</span></button><button class=\"ds-edit\" aria-label=\"Edit block Read a chapter\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m15 5 4 4M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15l-1 6Z\"/></svg></button></div>",
+      "css": ".ds-row{display:flex;align-items:center;gap:16px;min-height:94px;border-bottom:1px solid var(--line);color:var(--ink)}.ds-row button{font-family:\"Manrope Variable\",sans-serif;font-size:15px;line-height:1.6;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;background:none;color:var(--ink);cursor:pointer;min-height:44px;padding:8px 12px;border-radius:8px;touch-action:manipulation;}.ds-row button:hover{background:var(--tint)}.ds-row button:focus-visible{outline:2px solid var(--accent);outline-offset:4px;}.ds-row .ds-complete{width:48px;height:48px;min-width:48px;padding:8px;position:relative;color:var(--accent-ink)}.ds-complete:before{content:\"\";position:absolute;width:27px;height:27px;border:1.5px solid var(--accent);border-radius:50%;background:var(--accent);transition:background .2s,border-color .2s}.ds-complete svg{position:relative;z-index:1}.ds-row .ds-content{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:5px;flex:1;min-width:0;text-align:left;padding:12px 0;border-radius:0}.ds-row .ds-content:hover{background:none}.ds-name{font-size:16px;font-weight:650;overflow-wrap:anywhere;line-height:1.5;text-decoration:line-through;text-decoration-thickness:1px;color:var(--muted)}.ds-meta{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}.ds-row .ds-edit{color:var(--muted);width:44px;height:44px;padding:10px}@media(max-width:600px){.ds-row{gap:8px}.ds-name{font-size:15px}.ds-meta{font-size:11px}.ds-row .ds-edit{width:44px;padding:8px;flex-shrink:0}.ds-row .ds-complete{width:44px;min-width:44px;padding:6px}}@media(prefers-reduced-motion:reduce){.ds-complete:before{transition:none}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Quiet Daily Agenda",
+    "overview": "A calm working space for daily plans: warm white, charcoal text, and a restrained green accent. Manrope, open spacing, and thin dividers create a clean, premium feel without ornamental clutter.\n\nThe system prioritizes a legible agenda and visible completion controls on an Android phone. Light, dark, and system appearance share the same structure; only semantic color roles change. The implemented interface uses type, line icons, and simple data marks rather than photographic imagery.",
+    "keyCharacteristics": [
+      "Warm neutral surfaces with restrained green emphasis.",
+      "Clear type hierarchy and flat, divided lists.",
+      "Persistent, labeled Today, Progress, and Account navigation.",
+      "Explicit completion, saved, loading, and error states."
+    ],
+    "rules": [
+      {
+        "name": "The Semantic Theme Rule",
+        "body": "Use the CSS color roles in every state so light, dark, and system appearance remain coherent.",
+        "section": "colors"
+      },
+      {
+        "name": "The Flat Agenda Rule",
+        "body": "Keep routine content on the page surface; reserve elevation for transient status feedback.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use semantic CSS variables for every theme-sensitive surface and state.",
+      "Do retain visible labels for the three navigation destinations.",
+      "Do pair completion color with the checkmark and struck-through title.",
+      "Do distinguish no recorded plan from zero completion.",
+      "Do keep keyboard outlines and reduced-motion behavior."
+    ],
+    "donts": [
+      "Don't add ornamental clutter to the quiet daily agenda direction.",
+      "Don't turn every agenda row or settings section into an elevated card.",
+      "Don't hard-code light colors into shared component states.",
+      "Don't communicate save or error status through color alone."
+    ]
+  }
+}

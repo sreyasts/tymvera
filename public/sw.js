@@ -9,8 +9,8 @@
  * - Push & local notification click lifecycle handling
  */
 
-const CACHE_NAME = 'tymvera-v36-core';
-const RUNTIME_CACHE = 'tymvera-v36-runtime';
+const CACHE_NAME = 'tymvera-v39-core';
+const RUNTIME_CACHE = 'tymvera-v39-runtime';
 
 // Critical assets to precache on installation for guaranteed offline execution
 const PRECACHE_ASSETS = [
@@ -24,9 +24,7 @@ const PRECACHE_ASSETS = [
   '/icon-maskable-512.png',
   '/apple-touch-icon.png',
   '/icon.png',
-  '/vendor/tailwindcss.js',
-  '/vendor/material-symbols.css',
-  '/vendor/material-symbols-rounded.woff2'
+  '/favicon-32.png'
 ];
 
 // Install: precache critical assets + dynamic Vite bundles

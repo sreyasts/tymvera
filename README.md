@@ -1,3 +1,5 @@
+> **Daily planner rebuild:** The active app now uses a simple agenda, one-tap completion, dated repeating routines, readable completion graphs, and account-scoped Google backup. See [current implementation and release checks](docs/REBUILD.md). The older feature/architecture overview below describes the legacy implementation, whose source is retained for reference.
+
 <p align="center">
   <img src="public/og-image.png" alt="TYMVERA Banner" width="100%" style="border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);" />
 </p>
