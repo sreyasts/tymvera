@@ -57,3 +57,11 @@ Real web completion was written to Firestore, survived reload, and its undo was 
 ## Android distribution
 
 Firebase Spark Hosting rejects APK files. Keep APK files excluded from Hosting and distribute the signed APK through GitHub Releases. Do not upgrade billing to distribute it. Build the web bundle first, then assemble Android so bundled UI assets match the web build. Signing passwords are read from environment variables. Install over the existing APK to retain device data.
+
+## Recovery and rename correction
+
+Migration version 3 reads the predecessor `focusos_users/<uid>` document as well as `users/<uid>` and its settings/day subcollections. The prior migration missed that predecessor. Its weekday strings are normalized to numbers. Predecessor history is merged without automatically replacing an existing weekly plan; explicitly restoring an earlier plan preserves dated routine versions and completed history. Originals remain intact, and the restoration uses an atomic, preconditioned cloud commit after backup.
+
+Renaming a task from its block editor updates matching task names across historical records, routines and their dated versions, saved plans, and assigned-day snapshots. It preserves IDs, minutes, completion flags, dates, and scheduling fields. Capitalization follows the entered label. The recovered-history view includes all recorded dates before the tracking baseline rather than a moving one-year window. Progress defaults to 90 days; Lifetime retains its original baseline.
+
+52 JavaScript tests pass. A browser edit test verified mixed-case renaming with historical minutes and completion unchanged. The restored weekday plan was checked in the signed-in deployed web app and independently compared with its cloud source. APK 3.0.1 includes these changes; native Google sign-in remains a phone-test item.

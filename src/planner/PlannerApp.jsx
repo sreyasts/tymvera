@@ -12,6 +12,8 @@ import {
   reviseRoutine,
   selectDayVersion,
   TRACKING_START,
+  renameTask,
+  taskKey,
 } from "./model";
 import {
   authMessage,
@@ -177,7 +179,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
   useEffect(() => {
     if (editor) setMessage(null);
   }, [editor]);
-  const [range, setRange] = useState('lifetime');
+  const [range, setRange] = useState(90);
   const [selectedTask, setSelectedTask] = useState("");
   const [progressMetric, setProgressMetric] = useState("completion");
   const [historyLimit, setHistoryLimit] = useState(31);
@@ -272,7 +274,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
   function saveBlock(values) {
     const existing = editor?.block;
     change((p) => {
-      let next = p;
+      let next = existing ? renameTask(p, existing.name, values.name) : p;
       const id = existing?.id || newId();
       let routineId = existing?.routineId;
       if (values.days.length) {
@@ -325,6 +327,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
       records[rowId] = row;
       return { ...next, days: { ...next.days, [date]: records } };
     });
+    if (existing && selectedTask === taskKey(existing.name)) setSelectedTask(taskKey(values.name));
     setEditor(null);
     notify(existing ? "Block updated" : "Block added");
   }
@@ -788,11 +791,11 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
               <>
                 <div className="page-heading">
                   <div>
-                    <h1>Your progress</h1>
+                    <h1>{range === 'recovered' ? 'Recovered history' : 'Your progress'}</h1>
                     <p>
                       {range === "lifetime"
                         ? `Your lifetime record starts ${formatDate(TRACKING_START, { month: "long", day: "numeric", year: "numeric" })}. Older progress stays in the other periods.`
-                        : "Your time, across the things that matter to you."}
+                        : range === 'recovered' ? 'Your earlier recorded days, preserved separately from the new lifetime record.' : "Your time, across the things that matter to you."}
                     </p>
                   </div>
                 </div>
@@ -815,7 +818,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
                     </button>
                   ))}
                 </div>
-                {Object.keys(plan.days).some(day=>day<TRACKING_START)&&<p className="fine-print">Your earlier progress is preserved. <button className="text-button" onClick={()=>{setRange(365);setHistoryLimit(366);}}>View recovered history</button></p>}
+                {Object.keys(plan.days).some(day=>day<TRACKING_START)&&range!=='recovered'&&<p className="fine-print">Your earlier progress is preserved. <button className="text-button" onClick={()=>{setRange('recovered');setHistoryLimit(31);}}>View recovered history</button></p>}
                 <div className="progress-filters">
                   <label className="filter-label">
                     Task
@@ -1378,6 +1381,7 @@ function BlockEditor({
           <option key={name} value={name} />
         ))}
       </datalist>
+      {block && <p className="fine-print">Renaming updates this task everywhere, including past progress. Logged time and completions stay unchanged.</p>}
       <div className="form-columns">
         <label>
           <span className="field-caption">

@@ -217,6 +217,9 @@ service cloud.firestore {
       allow read: if isOwner(userId);
       allow write: if isOwner(userId);
     }
+    match /focusos_users/{userId} {
+      allow read: if isOwner(userId);
+    }
     match /users/{userId}/days/{date} {
       allow read: if isOwner(userId);
       allow write: if isOwner(userId) && date.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}');

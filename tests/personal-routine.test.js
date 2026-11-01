@@ -5,6 +5,8 @@ import {
   emptyPlan,
   selectDayVersion,
   saveRoutineVersion,
+  renameTask,
+  migrateLegacy,
   updateDay,
   validatePlan,
 } from "../src/planner/model";
@@ -24,6 +26,32 @@ const row = (id, name = "Study skills", extra = {}) => ({
   ...extra,
 });
 describe("Personal weekly routine and progress", () => {
+  it('keeps recovered history accessible beyond the one-year range without changing lifetime', () => {
+    const p=updateDay(updateDay(emptyPlan(),'2020-01-01',[row('old','Skills',{completed:true,actualMinutes:60})]),'2026-10-31',[row('new')]);
+    expect(progressSeries(p,'recovered','', '2026-11-01').map(d=>d.date)).toEqual(['2020-01-01']);
+    expect(progressSeries(p,'recovered','', '2026-11-01')[0].minutes).toBe(60);
+    expect(progressSeries(p,'lifetime','', '2026-11-01').map(d=>d.date)).toEqual(['2026-10-31','2026-11-01']);
+  });
+  it('keeps historical minutes and completions under the exact renamed label', () => {
+    const today=dateKey();
+    let plan=updateDay(emptyPlan(),today,[row('a','Study',{completed:true,actualMinutes:42}),row('b',' study ',{actualMinutes:18,dayOnly:true})]);
+    plan.routines.r={...row('r','Study'),from:today,days:[0,1,2,3,4,5,6],versions:[{...row('r','Study'),from:today,effectiveFrom:today,days:[0,1,2,3,4,5,6]}]};
+    plan.templates.class={id:'class',name:'Class',updatedAt:10,blocks:[row('slot','Study')]};
+    plan.dayModes[today]={id:today,templateId:'class',updatedAt:10,blocks:[row('slot','Study')]};
+    const renamed=renameTask(plan,'Study','sTuDy Skills');
+    expect(renamed.days[today].a).toMatchObject({name:'sTuDy Skills',completed:true,actualMinutes:42});
+    expect(renamed.days[today].b.actualMinutes).toBe(18);
+    expect(renamed.routines.r.versions[0].name).toBe('sTuDy Skills');
+    expect(renamed.templates.class.blocks[0].name).toBe('sTuDy Skills');
+    expect(renamed.dayModes[today].blocks[0].name).toBe('sTuDy Skills');
+    expect(taskTotals(renamed,[today]).find(t=>t.name==='sTuDy Skills').minutes).toBe(60);
+    expect(plan.days[today].a.name).toBe('Study');
+  });
+  it('restores numeric weekdays stored as strings by the predecessor', () => {
+    const plan=migrateLegacy({},[{id:'p',name:'Skills',start:'05:00',end:'06:00',days:['1','2','3','4','5']}]);
+    expect(plan.routines.p.days).toEqual([1,2,3,4,5]);
+    expect(()=>validatePlan(plan)).not.toThrow();
+  });
   it("updates future assigned snapshots while preserving current and historical plans", () => {
     let plan = emptyPlan();
     const original = { id: "class", name: "Class", blocks: [row("study")], updatedAt: 10 };

@@ -6,6 +6,7 @@ const mock = vi.hoisted(() => ({
   offline: false,
   reads: 0,
   legacyDays: {},
+  focusos: {},
   failRef: null,
 }));
 vi.hoisted(() => {
@@ -32,7 +33,7 @@ vi.mock("firebase/firestore", () => ({
   getFirestore: () => ({}),
   collection: (_, ...parts) => parts.join("/"),
   doc: (_, ...parts) => parts.join("/"),
-  getDocFromServer: async () => ({ data: () => ({}), exists: () => false }),
+  getDocFromServer: async ref => ({ data: () => ref.startsWith('focusos_users/') ? mock.focusos : {}, exists: () => ref.startsWith('focusos_users/') && Object.keys(mock.focusos).length > 0 }),
   getDocsFromServer: async (ref) => {
     if (mock.offline) throw new Error("offline");
     const entries = ref.endsWith('/planner_v3') ? [...mock.records.entries()].filter(([key]) => key.startsWith(`${ref}/`)).map(([key,value]) => [key.split('/').at(-1),value]) : Object.entries(mock.legacyDays);
@@ -76,10 +77,23 @@ beforeEach(() => {
   mock.offline = false;
   mock.reads = 0;
   mock.legacyDays = {};
+  mock.focusos = {};
   mock.failRef = null;
   window.NativeAndroid = undefined;
 });
 describe("Cloud isolation and conflict handling", () => {
+  it('recovers predecessor history even after the users-only migration was marked complete', async () => {
+    mock.records.set('users/alice/planner_v3/meta', {migrationComplete:true,legacyMigrationVersion:2});
+    mock.records.set('users/alice/planner_v3/routines', {records:{current:block('current',100,{days:[1],from:'2026-10-31'})}});
+    const preset={id:'early',name:'Skills',start:'05:00',end:'06:00',days:['1','2','3','4','5']};
+    mock.focusos={presets:[preset],history:{'2026-09-22':{blocksList:[preset],blocks:{early:{status:'completed'}}}}};
+    const recovered=await readPlan('alice');
+    expect(recovered.days['2026-09-22']['r-early'].completed).toBe(true);
+    expect(recovered.days['2026-09-22']['r-early'].duration).toBe(60);
+    expect(Object.keys(recovered.routines)).toEqual(['current']);
+    await pushPlan('alice',recovered);
+    expect(mock.records.get('users/alice/planner_v3/meta').legacyMigrationVersion).toBe(3);
+  });
   it('resumes an interrupted migration without abandoning unmigrated legacy days', async () => {
     const prior = '2026-10-30';
     mock.legacyDays = { [prior]:{blocksList:[{id:'p',name:'Legacy',start:'09:00',end:'10:00'}],blocks:{p:{status:'completed'}}} };
@@ -140,7 +154,7 @@ describe("Cloud isolation and conflict handling", () => {
   it("does not re-read unchanged historical documents for each completion", async () => {
     const before = updateDay(emptyPlan(), "2026-10-01", [block("old", 1)]);
     const after = updateDay(before, day, [block("new", 2)]);
-    await pushPlan("alice", after, { ...before, migrationComplete: true, legacyMigrationVersion:2 });
+    await pushPlan("alice", after, { ...before, migrationComplete: true, legacyMigrationVersion:3 });
     expect(mock.writes).toEqual([`users/alice/planner_v3/${day}`]);
     expect(mock.reads).toBe(1);
   });

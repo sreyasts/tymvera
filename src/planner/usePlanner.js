@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { emptyPlan, mergePlans, migrateLegacy, validatePlan } from "./model";
+import { emptyPlan, mergePlans, migrateLegacy, validatePlan, LEGACY_MIGRATION_VERSION } from "./model";
 import { idbGet, initDB, STORE_NAME } from "../storage/indexedDb";
 import { readPlan, pushPlan, watchPlan, authMessage } from "./cloud";
 
@@ -164,7 +164,7 @@ export function usePlanner(uid) {
         if (!alive) return;
         confirmedRemote.current = remote.needsMigration ? emptyPlan() : remote;
         migrationComplete.current =
-          !!remote.migrationComplete && remote.legacyMigrationVersion === 2;
+          !!remote.migrationComplete && remote.legacyMigrationVersion >= LEGACY_MIGRATION_VERSION;
         accept(mergePlans(current.current, remote), true);
         remoteReady.current = true;
         setRevision((v) => v + 1);
@@ -175,7 +175,7 @@ export function usePlanner(uid) {
             if (
               serverConfirmed &&
               incoming.migrationComplete &&
-              incoming.legacyMigrationVersion === 2
+              incoming.legacyMigrationVersion >= LEGACY_MIGRATION_VERSION
             )
               migrationComplete.current = true;
             if (serverConfirmed)
@@ -222,7 +222,7 @@ export function usePlanner(uid) {
         await pushPlan(uid, snapshot, {
           ...confirmedRemote.current,
           migrationComplete: migrationComplete.current,
-          legacyMigrationVersion: migrationComplete.current ? 2 : 0,
+          legacyMigrationVersion: migrationComplete.current ? LEGACY_MIGRATION_VERSION : 0,
         });
         if (!alive) return;
         migrationComplete.current = true;

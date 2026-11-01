@@ -32,7 +32,10 @@ export function progressSeries(
   selectedTask = "",
   today = dateKey(),
 ) {
-  return progressDates(period, today).map((date) => ({
+  const dates = period === 'recovered'
+    ? Object.keys(plan.days).filter(date => date < TRACKING_START && date <= today).sort()
+    : progressDates(period, today);
+  return dates.map((date) => ({
     date,
     ...dayStats(
       blocksForDay(plan, date).filter(

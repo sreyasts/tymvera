@@ -10,7 +10,7 @@ import {
   signInWithCredential,
 } from "firebase/auth";
 import { hasNativeHost, nativeRequest } from './native';
-import { emptyPlan, mergeRecords, mergePlans, migrateLegacy } from "./model";
+import { emptyPlan, mergeRecords, mergePlans, migrateLegacy, LEGACY_MIGRATION_VERSION } from "./model";
 
 const app =
   getApps()[0] ||
@@ -117,13 +117,19 @@ export async function readPlan(uid) {
     else if (/^\d{4}-\d{2}-\d{2}$/.test(s.id))
       plan.days[s.id] = s.data().records || {};
   });
-  if (plan.migrationComplete && plan.legacyMigrationVersion === 2) return plan;
+  if (plan.migrationComplete && plan.legacyMigrationVersion >= LEGACY_MIGRATION_VERSION) return plan;
   // Read the old schema only on the first migration. Never overwrite or delete it.
   const root = await getDocFromServer(doc(db, "users", uid));
   const settings = await getDocFromServer(
     doc(db, "users", uid, "settings", "current"),
   );
   const days = await getDocsFromServer(collection(db, "users", uid, "days"));
+  const focusos = await getDocFromServer(doc(db, "focusos_users", uid));
+  const earlier = focusos.data() || {};
+  const earlierPlan = migrateLegacy(earlier.history || {}, earlier.presets || []);
+  // Recover history from the predecessor without silently switching a user's
+  // current weekly schedule back to that older plan.
+  earlierPlan.routines = {};
   const old = root.data() || {};
   const history = { ...(old.TYMVERA_history || old.history || {}) };
   days.forEach((d) => {
@@ -131,10 +137,10 @@ export async function readPlan(uid) {
   });
   return {
     ...mergePlans(
-      migrateLegacy(
+      mergePlans(earlierPlan, migrateLegacy(
         history,
         settings.data()?.presets || old.TYMVERA_presets || old.presets || [],
-      ),
+      )),
       plan,
     ),
     needsMigration: true,
@@ -174,17 +180,17 @@ export async function pushPlan(uid, plan, previous = emptyPlan()) {
   }
   // A partially interrupted migration must continue reading the legacy source
   // on the next device/session. Mark complete only after every record succeeds.
-  if (!previous.migrationComplete || previous.legacyMigrationVersion !== 2) {
+  if (!previous.migrationComplete || previous.legacyMigrationVersion < LEGACY_MIGRATION_VERSION) {
     const meta = doc(db, "users", uid, "planner_v3", "meta");
     await runTransaction(db, async (transaction) => {
       const existing = await transaction.get(meta);
       if (
         !existing.data()?.migrationComplete ||
-        existing.data()?.legacyMigrationVersion !== 2
+        (existing.data()?.legacyMigrationVersion || 0) < LEGACY_MIGRATION_VERSION
       )
         transaction.set(meta, {
           migrationComplete: true,
-          legacyMigrationVersion: 2,
+          legacyMigrationVersion: LEGACY_MIGRATION_VERSION,
         });
     });
   }

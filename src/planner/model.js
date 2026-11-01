@@ -6,6 +6,7 @@ export const emptyPlan = () => ({
   dayModes: {},
 });
 export const TRACKING_START = "2026-10-31";
+export const LEGACY_MIGRATION_VERSION = 3;
 export const taskKey = (name) =>
   String(name || "")
     .normalize("NFKC")
@@ -276,6 +277,30 @@ export function saveRoutineVersion(plan, record, today = dateKey()) {
   }
   return { ...plan, templates: { ...plan.templates, [record.id]: record }, dayModes };
 }
+export function renameTask(plan, previousName, nextName) {
+  const name = String(nextName || '').trim();
+  if (!name || name.length > 120) throw new Error('Use a task name between 1 and 120 characters.');
+  if (previousName === name) return plan;
+  const previousKey = taskKey(previousName);
+  const rename = record => taskKey(record.name) === previousKey
+    ? { ...record, name, updatedAt: stamp() } : record;
+  const records = rows => Object.fromEntries(Object.entries(rows || {}).map(([id,row]) => [id,rename(row)]));
+  return {
+    ...plan,
+    routines: Object.fromEntries(Object.entries(plan.routines).map(([id,row]) => [id,{
+      ...rename(row), ...(row.versions ? {versions:row.versions.map(rename)} : {}),
+    }])),
+    days: Object.fromEntries(Object.entries(plan.days).map(([date,rows]) => [date,records(rows)])),
+    templates: Object.fromEntries(Object.entries(plan.templates || {}).map(([id,row]) => {
+      const blocks=row.blocks.map(rename);
+      return [id,blocks.some((b,i)=>b!==row.blocks[i]) ? {...row,blocks,updatedAt:stamp()} : row];
+    })),
+    dayModes: Object.fromEntries(Object.entries(plan.dayModes || {}).map(([date,row]) => {
+      const blocks=row.blocks?.map(rename);
+      return [date,blocks?.some((b,i)=>b!==row.blocks[i]) ? {...row,blocks,updatedAt:stamp()} : row];
+    })),
+  };
+}
 export function updateDay(plan, date, blocks) {
   return {
     ...plan,
@@ -294,7 +319,7 @@ export function migrateLegacy(history = {}, presets = []) {
       name: String(p.name).slice(0, 120),
       start: p.start || "",
       duration: legacyDuration(p),
-      days: Array.isArray(p.days) ? p.days : [0, 1, 2, 3, 4, 5, 6],
+      days: Array.isArray(p.days) ? [...new Set(p.days.map(Number).filter(d => Number.isInteger(d) && d >= 0 && d <= 6))] : [0, 1, 2, 3, 4, 5, 6],
       from: dateKey(),
       updatedAt: 2,
       deleted: false,
@@ -305,7 +330,7 @@ export function migrateLegacy(history = {}, presets = []) {
     const list = Array.isArray(log.blocksList)
       ? log.blocksList
       : presets.filter((p) =>
-          p?.days?.includes(new Date(`${date}T12:00:00`).getDay()),
+          p?.days?.map(Number).includes(new Date(`${date}T12:00:00`).getDay()),
         );
     plan.days[date] = {};
     for (const p of list) {
