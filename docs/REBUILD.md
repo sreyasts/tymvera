@@ -49,3 +49,11 @@ Android now bundles the same web UI in a native host with Credential Manager, na
 48 JavaScript tests pass. The deployed website restores the owner's actual Google account and shows the recovered history. An independent comparison found all 40 original historical sessions and six weekly routines preserved with no mismatches in dates, names, times, duration, completion, or actual logged minutes. Original legacy documents remain intact and have a local backup.
 
 Five native tests passed in the initial run. Native alarm notification delivery was verified while the app was in the background. Final emulator Google sign-in remains unverified because the Google service timed out; neither passing native/model tests nor verified web sign-in establishes APK login or physical-phone behavior. The final native rerun and physical-device checks remain separate release evidence.
+
+The native test rerun passed all five tests. The signed release APK rendered correctly on an isolated Android 15 emulator and opened Google's account chooser; account sign-in was not completed there. The owner will test authentication on their phone. Native permission results now immediately refresh the reminder status. Release builds succeed, with a lint metadata diagnostic from Firebase Auth 25's Kotlin 2.4 metadata and the older lint reader; this diagnostic is not evidence of a native authentication pass.
+
+Real web completion was written to Firestore, survived reload, and its undo was independently confirmed on the server (completed false, logged minutes zero). All 40 original sessions still match. Two editable saved versions, No class and Class day, were saved and independently read back; both start from the recovered Saturday plan pending the owner's class-time edits.
+
+## Android distribution
+
+Firebase Spark Hosting rejects APK files. Keep APK files excluded from Hosting and distribute the signed APK through GitHub Releases. Do not upgrade billing to distribute it. Build the web bundle first, then assemble Android so bundled UI assets match the web build. Signing passwords are read from environment variables. Install over the existing APK to retain device data.
