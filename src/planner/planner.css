@@ -1165,3 +1165,8 @@ summary {
 .time-entry input { width: 100%; min-width: 0; }
 
 .performance-space::after { content: ""; position: absolute; left: 0; right: 0; bottom: var(--target-height); border-top: 1px dashed var(--muted); pointer-events: none; opacity: .55; }
+
+.update-notice { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 18px 0; margin-bottom: 24px; border-bottom: 1px solid var(--line); }
+.update-notice > div { flex: 1; min-width: 180px; }
+.update-notice p { margin: 6px 0 0; font-size: 13px; line-height: 1.7; color: var(--muted); }
+.update-notice .error-text { color: var(--danger); }

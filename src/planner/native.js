@@ -10,7 +10,7 @@ export function nativeRequest(method, payload={}) {
   if (!hasNativeHost()) return Promise.reject(new Error('This action is available in the Android app.'));
   return new Promise((resolve,reject)=>{
     const id=String(++sequence);
-    const timer=setTimeout(()=>{pending.delete(id);reject(new Error('Android did not respond. Reopen the app and try again.'));},method==='signIn'?120000:20000);
+    const timer=setTimeout(()=>{pending.delete(id);reject(new Error('Android did not respond. Reopen the app and try again.'));},method==='signIn'?120000:['checkUpdates','startUpdate'].includes(method)?30000:20000);
     pending.set(id,{resolve,reject,timer});
     try{window.NativeAndroid.request(id,method,JSON.stringify(payload));}catch(error){clearTimeout(timer);pending.delete(id);reject(error);}
   });

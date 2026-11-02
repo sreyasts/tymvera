@@ -29,6 +29,7 @@ import RoutineVersions from "./RoutineVersions";
 import {useAppBack,useBackLayer} from './navigation';
 import {hasNativeHost,nativeRequest} from './native';
 import NativeReminders,{useNativeReminders} from './NativeReminders';
+import NativeUpdates,{useNativeUpdates,UpdateNotice} from './NativeUpdates';
 import {
   PERIODS,
   progressSeries,
@@ -177,6 +178,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
     online,
   } = usePlanner(user?.uid);
   const nativeReminders = useNativeReminders(plan,user?.uid);
+  const nativeUpdates=useNativeUpdates();
   const [tab, setTab] = useState("today");
   const [date, setDate] = useState(() => {const value=new URLSearchParams(location.search).get("date"); return /^\d{4}-\d{2}-\d{2}$/.test(value || "") ? value : dateKey();});
   const [editor, setEditor] = useState(null);
@@ -506,6 +508,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
         ))}
       </nav>
       <main id="main-content">
+        {tab!=="account"&&<UpdateNotice controller={nativeUpdates}/>}
         {(error || authError) && (
           <div className="error-banner" role="alert">
             <p>{error || authError}</p>
@@ -1097,6 +1100,7 @@ function Workspace({ user, login, busy, authError, setAuthError }) {
                 </section>
                 <section className="settings-section"><h2>Progress rules</h2><p>Priority points determine completion, independently of task length. Low = 1, Medium = 2, High = 3, Very high = 4.</p><p>Overnight blocks stay on their start date for completion. Logged minutes are divided at midnight in your device’s local time. The next morning’s share appears in that day’s time graph.</p><p>Preset changes apply from today forward. Past dates retain their schedule and weight. Task renames update labels everywhere without losing completed work or minutes.</p></section>
                 <NativeReminders controller={nativeReminders}/>
+                <NativeUpdates controller={nativeUpdates}/>
                 <section className="settings-section">
                   <h2>Appearance</h2>
                   <p>Choose what feels comfortable on your screen.</p>

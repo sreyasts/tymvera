@@ -1,10 +1,10 @@
 ## Get TYMVERA
 
-### [Download Android APK — 3.2.2](https://github.com/sreyasts/tymvera/releases/download/v3.2.2-phone-test/TYMVERA-Android-3.2.2.apk)
+### [Download Android APK — 3.3.0](https://github.com/sreyasts/tymvera/releases/download/v3.3.0-phone-test/TYMVERA-Android-3.3.0.apk)
 
-[Open the web app](https://tymvera.web.app) · [Release notes](https://github.com/sreyasts/tymvera/releases/tag/v3.2.2-phone-test) · [Current app source](https://github.com/sreyasts/tymvera/tree/codex/simplify-daily-planner)
+[Open the web app](https://tymvera.web.app) · [Release notes](https://github.com/sreyasts/tymvera/releases/tag/v3.3.0-phone-test) · [Current app source](https://github.com/sreyasts/tymvera/tree/codex/simplify-daily-planner)
 
-Android 3.2.2 is a **phone-test release**. Install it over your existing TYMVERA app. The current implementation is linked above; the older overview below describes the legacy version.
+Android 3.3.0 is a **phone-test release**. Install it over your existing TYMVERA app. This is the last manual install needed to enable in-app updates: future newer published APKs reveal **Update**; the current version shows no Update button. Android still asks you to approve installation. The current implementation is linked above; the older overview below describes the legacy version.
 
 ---
 

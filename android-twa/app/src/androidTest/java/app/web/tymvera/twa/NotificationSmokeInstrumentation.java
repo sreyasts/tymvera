@@ -25,6 +25,27 @@ public class NotificationSmokeInstrumentation extends Instrumentation {
   back(activity,web,"Your space");back(activity,web,"progress");back(activity,web,"Today");
   check("false".equals(js(web,"window.__tymveraHandleBack()")),"Root Back should allow leaving only after page history is exhausted");
  }
+ private void updateDownload()throws Exception{
+  Context c=getTargetContext();JSONObject info=AppUpdater.check(c,true);check(info.getBoolean("available"),"Expected a newer published release for the test baseline");
+  c.getSharedPreferences("updater_smoke",0).edit().putString("data","retained").commit();
+  AppUpdater.start(c);long until=System.currentTimeMillis()+180000;JSONObject status=null;
+  while(System.currentTimeMillis()<until){status=AppUpdater.status(c);String stage=status.getString("state");if(stage.equals("ready"))break;if(stage.equals("error"))throw new AssertionError(status.optString("error"));Thread.sleep(500);}
+  check(status!=null&&"ready".equals(status.getString("state")),"Update download did not become ready");
+  Intent install=AppUpdater.installIntent(c);check("content".equals(install.getData().getScheme()),"Installer must use a private content URI");
+  check(install.getData().getAuthority().equals(c.getPackageName()+".updates"),"Wrong file provider");
+  check((install.getFlags()&Intent.FLAG_GRANT_READ_URI_PERMISSION)!=0,"Installer cannot read the APK");
+  check(c.getPackageManager().resolveActivity(install,0)!=null,"No Android package installer found");
+  if(!AppUpdater.installAllowed(c))check(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES.equals(AppUpdater.prepareInstaller(c).getAction()),"Missing source-permission handoff");
+  try(java.io.FileOutputStream corrupt=new java.io.FileOutputStream(AppUpdater.readyFile(c),true)){corrupt.write(0);}
+  boolean rejected=false;try{AppUpdater.installIntent(c);}catch(Exception expected){rejected=true;}check(rejected,"Tampered APK was accepted");
+  AppUpdater.prefs(c).edit().putString("state","downloading").apply();check("ready".equals(AppUpdater.status(c).getString("state")),"Could not restore verified update after tamper test");
+ }
+ private void updateVerify()throws Exception{
+  Context c=getTargetContext();android.content.pm.PackageInfo installed=c.getPackageManager().getPackageInfo(c.getPackageName(),0);
+  check("3.3.0".equals(installed.versionName),"New version was not installed");
+  check("retained".equals(c.getSharedPreferences("updater_smoke",0).getString("data","")),"App data did not survive update");
+  JSONObject info=AppUpdater.check(c,true);check(!info.getBoolean("available"),"Update must be hidden when current");
+ }
  private void check(boolean value,String message){if(!value)throw new AssertionError(message);}
  private void checkLogo(Context c,Notification notification,String message){
   check(notification!=null&&notification.getLargeIcon()!=null,message+": no image");
@@ -40,6 +61,8 @@ public class NotificationSmokeInstrumentation extends Instrumentation {
  private Notification find(Context c,int id){for(StatusBarNotification n:c.getSystemService(NotificationManager.class).getActiveNotifications())if(n.getId()==id)return n.getNotification();return null;}
  private Notification awaitNotification(Context c,int id,boolean large)throws Exception{long until=System.currentTimeMillis()+5000;Notification n=null;while(System.currentTimeMillis()<until){n=find(c,id);if(n!=null&&(!large||n.getLargeIcon()!=null))return n;Thread.sleep(50);}return n;}
  @Override public void onStart(){
+  if("updateDownload".equals(mode)||"updateVerify".equals(mode)){Bundle result=new Bundle();try{if(mode.equals("updateDownload"))updateDownload();else updateVerify();result.putString("stream","PASS "+mode+"\n");finish(Activity.RESULT_OK,result);}catch(Throwable e){result.putString("stream","FAIL "+mode+": "+e+"\n");finish(Activity.RESULT_CANCELED,result);}return;}
+
   if("navigation".equals(mode)){Bundle result=new Bundle();try{navigation();result.putString("stream","PASS native Back: presets -> Account -> Progress -> Today; root exit allowed only after history.\n");finish(Activity.RESULT_OK,result);}catch(Throwable e){result.putString("stream","FAIL native Back: "+e+"\n");finish(Activity.RESULT_CANCELED,result);}return;}
   Context c=getTargetContext();Bundle result=new Bundle();String id="";int code=Activity.RESULT_OK;
   try{

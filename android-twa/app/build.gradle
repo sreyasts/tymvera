@@ -1,5 +1,12 @@
 plugins { id 'com.android.application' }
 
+def appVersion = '3.3.0'
+def versionParts = appVersion.tokenize('.').collect { it.toInteger() }
+if (versionParts.size() != 3 || versionParts.any { it < 0 || it > 999 }) throw new GradleException('Use a three-part app version with values from 0 to 999.')
+def appVersionCode = versionParts[0] * 1000000 + versionParts[1] * 1000 + versionParts[2]
+def updaterTestBaseline = providers.gradleProperty('updaterTestBaseline').orNull == 'true'
+if (updaterTestBaseline && !gradle.startParameter.taskNames.every { it.contains('Debug') }) throw new GradleException('Updater baseline builds are debug-test only.')
+
 android {
     namespace 'app.web.tymvera.twa'
     compileSdk 36
@@ -8,8 +15,8 @@ android {
         minSdk 24
         targetSdk 36
         testInstrumentationRunner 'app.web.tymvera.twa.NotificationSmokeInstrumentation'
-        versionCode 9
-        versionName '3.2.2'
+        versionCode(updaterTestBaseline ? 9 : appVersionCode)
+        versionName(updaterTestBaseline ? '3.2.2' : appVersion)
         resValue 'string', 'appName', 'TYMVERA'
         resValue 'string', 'launcherName', 'TYMVERA'
         resValue 'color', 'backgroundColor', '#f8f9f5'

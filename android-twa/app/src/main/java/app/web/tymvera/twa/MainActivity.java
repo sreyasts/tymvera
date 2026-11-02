@@ -21,7 +21,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 
 public class MainActivity extends AppCompatActivity {
- private WebView web;private FirebaseAuth auth;private ValueCallback<Uri[]> fileResult;private final ExecutorService io=Executors.newSingleThreadExecutor();
+ private WebView web;private FirebaseAuth auth;private ValueCallback<Uri[]> fileResult;private final ExecutorService io=Executors.newSingleThreadExecutor(),updates=Executors.newSingleThreadExecutor();
  @SuppressLint("SetJavaScriptEnabled") @Override public void onCreate(Bundle state){
   super.onCreate(state);
   getOnBackPressedDispatcher().addCallback(this,new androidx.activity.OnBackPressedCallback(true){
@@ -44,9 +44,35 @@ public class MainActivity extends AppCompatActivity {
  }
  void reply(String id,Object value,String error){runOnUiThread(()->{if(isFinishing()||web==null)return;try{JSONObject result=new JSONObject().put("ok",error==null);if(error==null)result.put("value",value==null?JSONObject.NULL:value);else result.put("error",error);web.evaluateJavascript("window.__tymveraNativeResult&&window.__tymveraNativeResult("+JSONObject.quote(id)+","+result.toString()+")",null);}catch(Exception ignored){}});}
  private String exportText;
+ private final Handler updateHandler=new Handler(Looper.getMainLooper());private boolean updatePolling=false,openingInstaller=false;
+ private void watchUpdate(){if(updatePolling||isFinishing())return;updatePolling=true;pollUpdate();}
+ private void pollUpdate(){
+  if(isFinishing()||isDestroyed()){updatePolling=false;return;}
+  updates.execute(()->{try{JSONObject state=AppUpdater.status(this);runOnUiThread(()->{
+   if(isFinishing()||isDestroyed()){updatePolling=false;return;}
+   String stage=state.optString("state");boolean requested=AppUpdater.prefs(this).getBoolean("requested",false);
+   if("ready".equals(stage)&&requested&&getLifecycle().getCurrentState().isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)&&hasWindowFocus()){updatePolling=false;installDownloadedUpdate(null);}
+   else if(requested&&(stage.equals("downloading")||stage.equals("verifying")||stage.equals("ready")))updateHandler.postDelayed(this::pollUpdate,1000);
+   else updatePolling=false;
+  });}catch(Exception e){runOnUiThread(()->updatePolling=false);}});
+ }
+ private void installDownloadedUpdate(String requestId){
+  if(openingInstaller){if(requestId!=null)reply(requestId,true,null);return;}
+  openingInstaller=true;
+  updates.execute(()->{try{Intent installer=AppUpdater.prepareInstaller(this);runOnUiThread(()->{
+   openingInstaller=false;if(isFinishing()||isDestroyed())return;
+   if(!getLifecycle().getCurrentState().isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)){if(requestId!=null)reply(requestId,null,"Return to TYMVERA to install the update.");return;}
+   try{startActivity(installer);AppUpdater.installerLaunched(this);if(requestId!=null)reply(requestId,true,null);}
+   catch(Exception e){if(requestId!=null)reply(requestId,null,"Android could not open the update installer. Try again.");}
+  });}catch(Exception e){runOnUiThread(()->openingInstaller=false);if(requestId!=null)reply(requestId,null,e.getMessage());}});
+ }
  private class Bridge {
   @JavascriptInterface public void request(String id,String method,String json){if(json.length()>2*1024*1024){reply(id,null,"The plan is too large.");return;}runOnUiThread(()->{try{JSONObject data=new JSONObject(json);
    switch(method){
+    case "checkUpdates":updates.execute(()->{try{reply(id,AppUpdater.check(MainActivity.this,data.optBoolean("force")),null);}catch(Exception e){reply(id,null,"Could not check for updates. Check your connection and retry.");}});break;
+    case "updateStatus":updates.execute(()->{try{reply(id,AppUpdater.status(MainActivity.this),null);}catch(Exception e){reply(id,null,"Could not read update status. Retry.");}});break;
+    case "startUpdate":updates.execute(()->{try{JSONObject status=AppUpdater.start(MainActivity.this);reply(id,status,null);runOnUiThread(()->watchUpdate());}catch(Exception e){reply(id,null,e.getMessage());}});break;
+    case "installUpdate":installDownloadedUpdate(id);break;
     case "signIn":signIn(id);break;
     case "signOut":auth.signOut();ReminderStore.prefs(MainActivity.this).edit().putBoolean("enabled",false).apply();ReminderStore.schedule(MainActivity.this);reply(id,true,null);break;
     case "appearance":boolean dark=data.optBoolean("dark");web.setBackgroundColor(android.graphics.Color.parseColor(dark?"#171c19":"#f8f9f5"));WindowInsetsControllerCompat bars=WindowCompat.getInsetsController(getWindow(),web);bars.setAppearanceLightStatusBars(!dark);bars.setAppearanceLightNavigationBars(!dark);reply(id,true,null);break;
@@ -72,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
  }
  @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==41&&fileResult!=null){fileResult.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(result,data));fileResult=null;}if(request==43&&result==RESULT_OK&&data!=null&&data.getData()!=null&&exportText!=null){try(OutputStream out=getContentResolver().openOutputStream(data.getData())){if(out!=null)out.write(exportText.getBytes(StandardCharsets.UTF_8));}catch(Exception e){new androidx.appcompat.app.AlertDialog.Builder(this).setMessage("Backup could not be saved. Try again.").setPositiveButton("OK",null).show();}exportText=null;}}
  @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results){super.onRequestPermissionsResult(request,permissions,results);ReminderStore.schedule(this);if(web!=null)web.evaluateJavascript("window.dispatchEvent(new Event('native-resume'))",null);}
- @Override protected void onResume(){super.onResume();ReminderStore.schedule(this);if(web!=null)web.evaluateJavascript("window.dispatchEvent(new Event('native-resume'))",null);}
+ @Override protected void onResume(){super.onResume();ReminderStore.schedule(this);if(web!=null)web.evaluateJavascript("window.dispatchEvent(new Event('native-resume'))",null);if(AppUpdater.prefs(this).getBoolean("pendingInstall",false)&&AppUpdater.installAllowed(this)&&AppUpdater.readyFile(this).isFile())installDownloadedUpdate(null);else if(AppUpdater.prefs(this).getBoolean("requested",false))watchUpdate();}
  private void handlePlannerBack(){
   if(web==null){moveTaskToBack(true);return;}
   web.evaluateJavascript("typeof window.__tymveraHandleBack==='function'&&window.__tymveraHandleBack()",handled->{
@@ -80,5 +106,5 @@ public class MainActivity extends AppCompatActivity {
    if(web.canGoBack())web.goBack();else moveTaskToBack(true);
   });
  }
- @Override protected void onDestroy(){if(fileResult!=null)fileResult.onReceiveValue(null);if(web!=null){web.removeJavascriptInterface("NativeAndroid");web.destroy();web=null;}io.shutdown();super.onDestroy();}
+ @Override protected void onDestroy(){updateHandler.removeCallbacksAndMessages(null);if(fileResult!=null)fileResult.onReceiveValue(null);if(web!=null){web.removeJavascriptInterface("NativeAndroid");web.destroy();web=null;}io.shutdown();updates.shutdown();super.onDestroy();}
 }
