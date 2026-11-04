@@ -71,13 +71,13 @@ service cloud.firestore {
     // Validate that document contains only allowed study planner fields
     function hasOnlyAllowedStudyPlanFields(data) {
       let allowedKeys = [
-        'plan', 'planDays', 'stream', 'engineVersion', 'startDate', 'deadlineDate',
+        'plan', 'planDays', 'stream', 'grade', 'engineVersion', 'startDate', 'deadlineDate',
         'targetTerm', 'improvementOnly', 'completedChaptersOnInit', 'completedChapters',
         'improvementConfig', 'revisionDaysCount', 'syllabusDaysCount', 'totalConfiguredTasks',
         'studyIntensity', 'personalization', 'diagnostics', 'scorecard', 'isValid', 'valid',
         'issues', 'validationIssues', 'isLateEveningGenerated', 'createdAt', 'lastModified',
         'lastSynced', 'updatedAt', 'userEmail', 'displayName', 'ownerUid', 'uid',
-        'bonusXP', 'xp', 'streakCount', 'lastCompletedDate', '_migratedFromV1'
+        'bonusXP', 'xp', 'streakCount', 'lastCompletedDate', '_migratedFromV1', 'clientSessionId'
       ];
       return data.keys().hasOnly(allowedKeys);
     }
@@ -96,7 +96,9 @@ service cloud.firestore {
 
     // Validate string fields and enforce realistic size limits against DoS/resource exhaustion
     function isValidUserStrings(data) {
-      return (!('stream' in data) || (data.stream is string && data.stream.size() <= 50)) &&
+      return (!('grade' in data) || data.grade in ['+1', '+2', 'dual']) &&
+             (!('clientSessionId' in data) || (data.clientSessionId is string && data.clientSessionId.size() <= 150)) &&
+             (!('stream' in data) || (data.stream is string && data.stream.size() <= 50)) &&
              (!('startDate' in data) || (data.startDate is string && data.startDate.size() <= 50)) &&
              (!('deadlineDate' in data) || (data.deadlineDate is string && data.deadlineDate.size() <= 50)) &&
              (!('lastCompletedDate' in data) || (data.lastCompletedDate is string && data.lastCompletedDate.size() <= 50)) &&
@@ -218,22 +220,16 @@ service cloud.firestore {
       allow write: if isOwner(userId);
     }
     match /focusos_users/{userId} {
-      allow read: if isOwner(userId);
+      allow read, write: if isOwner(userId);
     }
     match /users/{userId}/days/{date} {
-      allow read: if isOwner(userId);
-      allow write: if isOwner(userId) && date.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}');
+      allow read, write: if isOwner(userId);
     }
-    match /users/{userId}/planner_v3/{entry} {
-      allow read: if isOwner(userId);
-      allow create, update: if isOwner(userId) && (
-        ((entry == 'routines' || entry == 'templates' || entry == 'day_modes' || entry.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}'))
-          && request.resource.data.keys().hasOnly(['records','resetAt']) && request.resource.data.records is map
-          && (!exists(/databases/$(database)/documents/users/$(userId)/planner_v3/meta) || !('resetAt' in get(/databases/$(database)/documents/users/$(userId)/planner_v3/meta).data) || request.resource.data.resetAt == get(/databases/$(database)/documents/users/$(userId)/planner_v3/meta).data.resetAt))
-        || (entry == 'meta' && request.resource.data.keys().hasOnly(['migrationComplete','legacyMigrationVersion','resetAt','trackingStart'])
-          && (!exists(/databases/$(database)/documents/users/$(userId)/planner_v3/$(entry)) || !('resetAt' in resource.data) || request.resource.data.resetAt == resource.data.resetAt)
-          && request.resource.data.migrationComplete is bool));
-      allow delete: if isOwner(userId);
+    match /users/{userId}/planner_v3/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+    match /users/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
     }
 
     // Deny read and write access to all other paths and subcollections

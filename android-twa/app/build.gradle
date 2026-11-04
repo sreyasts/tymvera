@@ -34,9 +34,9 @@ android {
     signingConfigs {
         release {
             storeFile file(System.getenv('TYMVERA_KEYSTORE') ?: 'release.keystore')
-            storePassword System.getenv('TYMVERA_STORE_PASSWORD')
-            keyAlias System.getenv('TYMVERA_KEY_ALIAS')
-            keyPassword System.getenv('TYMVERA_KEY_PASSWORD')
+            storePassword(System.getenv('TYMVERA_STORE_PASSWORD') ?: 'tymvera123')
+            keyAlias(System.getenv('TYMVERA_KEY_ALIAS') ?: 'tymvera')
+            keyPassword(System.getenv('TYMVERA_KEY_PASSWORD') ?: 'tymvera123')
         }
     }
     buildTypes {
